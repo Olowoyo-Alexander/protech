@@ -1,0 +1,17 @@
+{
+  "name": "prostech",
+  "version": "1.0.0",
+  "description": "PROTECH — Collaborative Student Project Repository and Innovation Hub (MERN)",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install --prefix server && npm install --prefix client",
+    "seed": "npm run seed:embedded --prefix server",
+    "server": "npm run dev:embedded --prefix server",
+    "client": "npm run dev --prefix client",
+    "build": "npm run build --prefix client",
+    "dev": "concurrently -n SERVER,CLIENT -c yellow,cyan \"npm run dev:embedded --prefix server\" \"npm run dev --prefix client\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

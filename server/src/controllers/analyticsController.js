@@ -1,0 +1,159 @@
+import asyncHandler from 'express-async-handler';
+import Project from '../models/Project.js';
+import User from '../models/User.js';
+import { platformUsers } from '../utils/platform.js';
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// A project's academic level is the actual level of whoever is involved: the
+// first author that has a level (e.g. "300 Level" → "300L"). We scan all authors
+// so a project co-authored/published with a level-less user (e.g. a supervisor)
+// still resolves to the student's real level rather than a catch-all. Projects
+// where no author has any level are left out of the level breakdown entirely.
+const LEVEL_ORDER = ['100L', '200L', '300L', '400L', '500L', '600L'];
+const levelOf = (authors) => {
+  for (const a of authors || []) {
+    const m = String((a && a.level) || '').match(/(\d{3})/);
+    if (m) return `${m[1]}L`;
+  }
+  return null;
+};
+// Order the levels found: numeric levels ascending, anything else after.
+const orderLevels = (set) => {
+  const arr = [...set];
+  return arr.sort((a, b) => {
+    const ia = LEVEL_ORDER.indexOf(a);
+    const ib = LEVEL_ORDER.indexOf(b);
+    if (ia === -1 && ib === -1) return a < b ? -1 : 1;
+    if (ia === -1) return 1;
+    if (ib === -1) return -1;
+    return ia - ib;
+  });
+};
+
+// GET /api/analytics
+// The analytics charts are filter-free and level-aware: every dimension is
+// encoded directly in the graph.
+//   - projectsByDept / collaborationsByDept: dept×level matrices for stacked bars
+//     (department on the axis, one stack segment per academic level)
+//   - engagementTrend: monthly engagement, one line per academic level
+// plus the totals and the Gold leaderboard.
+export const getAnalytics = asyncHandler(async (req, res) => {
+  const [totalProjects, approved, pending, rejected, recognized, totalUsers, students, supervisors] =
+    await Promise.all([
+      Project.countDocuments(),
+      Project.countDocuments({ status: 'approved' }),
+      Project.countDocuments({ status: 'pending' }),
+      Project.countDocuments({ status: 'rejected' }),
+      Project.countDocuments({ recognized: true }),
+      User.countDocuments(),
+      User.countDocuments({ role: 'student' }),
+      User.countDocuments({ role: 'supervisor' }),
+    ]);
+
+  // Top projects by total stars (supervisor + background engagement).
+  const users = platformUsers();
+  const all = await Project.find({ status: 'approved' }).populate('authors', 'name');
+  const top = all
+    .map((p) => ({
+      _id: p._id,
+      title: p.title,
+      dept: p.dept,
+      set: p.set,
+      gold: Math.round(p.totalGold(users) * 10) / 10,
+      recognized: p.recognized,
+      tier: p.totalTier(users),
+      likes: p.likes.length,
+    }))
+    .sort((a, b) => b.gold - a.gold)
+    .slice(0, 5);
+
+  // --- Stacked-bar matrices (department × academic level) --------------------
+  const docs = await Project.find({}, 'title dept set status extends authors')
+    .populate('authors', 'level')
+    .sort('-createdAt')
+    .lean();
+  const levelSeen = new Set();
+  const projByDept = {};
+  const collabByDept = {};
+  const projList = {}; // dept -> [{ _id, title, sub }] for the click-through popover
+  const collabList = {};
+  const isCollab = (d) => d.extends && d.status !== 'pending';
+  for (const d of docs) {
+    const level = levelOf(d.authors);
+    if (!level) continue; // only projects with an actual level appear in the breakdown
+    const dept = d.dept || 'Unknown';
+    levelSeen.add(level);
+    const item = { _id: d._id, title: d.title, sub: `${d.set} · ${level} · ${d.status}` };
+    (projByDept[dept] ||= {})[level] = (projByDept[dept][level] || 0) + 1;
+    (projList[dept] ||= []).push(item);
+    if (isCollab(d)) {
+      (collabByDept[dept] ||= {})[level] = (collabByDept[dept][level] || 0) + 1;
+      (collabList[dept] ||= []).push(item);
+    }
+  }
+  const levelKeys = orderLevels(levelSeen);
+  // Flatten a {dept: {level: n}} map into recharts rows: { dept, total, <level>: n }.
+  const toRows = (map, listMap) =>
+    Object.entries(map)
+      .map(([dept, levels]) => {
+        const row = { dept, total: 0, projects: (listMap[dept] || []).slice(0, 40) };
+        for (const l of levelKeys) {
+          row[l] = levels[l] || 0;
+          row.total += row[l];
+        }
+        return row;
+      })
+      .filter((r) => r.total > 0)
+      .sort((a, b) => b.total - a.total);
+  const projectsByDept = toRows(projByDept, projList);
+  const collaborationsByDept = toRows(collabByDept, collabList);
+
+  // --- Engagement trend (monthly, one line per academic level) ---------------
+  // Total engagement (likes + comments + bookmarks + ratings + recommendations)
+  // per project, summed by month and by the project's level. Bucketed by project
+  // creation date — the one timestamp shared by every engagement type.
+  const start = new Date();
+  start.setMonth(start.getMonth() - 5);
+  start.setDate(1);
+  start.setHours(0, 0, 0, 0);
+  const trendDocs = await Project.find(
+    { createdAt: { $gte: start } },
+    'createdAt likes comments bookmarks ratings spotlight authors'
+  )
+    .populate('authors', 'level')
+    .lean();
+  const trendMap = {}; // "y-m" -> { level -> totalEngagement }
+  for (const d of trendDocs) {
+    const level = levelOf(d.authors);
+    if (!level) continue; // engagement without an involved level isn't attributed
+    const dt = new Date(d.createdAt);
+    const key = `${dt.getFullYear()}-${dt.getMonth() + 1}`;
+    const eng =
+      (d.likes || []).length +
+      (d.comments || []).length +
+      (d.bookmarks || []).length +
+      (d.ratings || []).length +
+      (d.spotlight && d.spotlight.recommended ? 1 : 0);
+    ((trendMap[key] ||= {})[level] = (trendMap[key][level] || 0) + eng);
+  }
+  // Walk a continuous 6-month axis; fill every level (0 when absent).
+  const engagementTrend = [];
+  const cursor = new Date(start);
+  for (let i = 0; i < 6; i++) {
+    const key = `${cursor.getFullYear()}-${cursor.getMonth() + 1}`;
+    const row = { month: MONTHS[cursor.getMonth()] };
+    for (const l of levelKeys) row[l] = (trendMap[key] && trendMap[key][l]) || 0;
+    engagementTrend.push(row);
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  res.json({
+    totals: { totalProjects, approved, pending, rejected, recognized, totalUsers, students, supervisors },
+    levelKeys,
+    projectsByDept,
+    collaborationsByDept,
+    engagementTrend,
+    topProjects: top,
+  });
+});

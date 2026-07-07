@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROTECH — Student Innovation Hub</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0a1628;--navy2:#112040;--navy3:#1a3060;
+  --amber:#f59e0b;--amber2:#fbbf24;--amber3:#fde68a;
+  --slate:#8899bb;--slate2:#c5d0e8;
+  --surface:#f0f4ff;--white:#ffffff;
+  --green:#10b981;--red:#ef4444;--blue:#3b82f6;
+  --text:#0a1628;--textmuted:#5566aa;
+  --border:#dde4f5;
+  --ff:'DM Sans',sans-serif;
+}
+body{font-family:var(--ff);font-size:13px;color:var(--text);background:var(--surface);min-height:100vh}
+#app{display:flex;flex-direction:column;min-height:100vh}
+#auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--navy);padding:2rem}
+.auth-box{background:var(--navy2);border:1px solid var(--navy3);border-radius:16px;padding:2rem;width:100%;max-width:440px}
+.auth-logo{font-family:'DM Serif Display',serif;font-size:30px;color:var(--amber);margin-bottom:4px}
+.auth-sub{font-size:11px;color:var(--slate);margin-bottom:2rem;letter-spacing:.6px;text-transform:uppercase}
+.auth-tabs{display:flex;margin-bottom:1.5rem;border:1px solid var(--navy3);border-radius:8px;overflow:hidden}
+.auth-tab{flex:1;padding:9px;text-align:center;cursor:pointer;font-size:13px;color:var(--slate);background:transparent;border:none;font-family:var(--ff)}
+.auth-tab.active{background:var(--amber);color:var(--navy);font-weight:600}
+label{display:block;font-size:11px;color:var(--slate);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;margin-top:14px}
+input,select,textarea{width:100%;padding:9px 12px;background:var(--navy3);border:1px solid #2a4070;border-radius:8px;color:#e8eeff;font-size:13px;font-family:var(--ff);outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--amber)}
+select option{background:var(--navy2)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-family:var(--ff);font-weight:500;border:none;transition:opacity .15s}
+.btn:hover{opacity:.85}
+.btn-primary{background:var(--amber);color:var(--navy)}
+.btn-ghost{background:transparent;color:var(--slate2);border:1px solid #2a4070}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-danger{background:var(--red);color:#fff}
+.btn-success{background:var(--green);color:#fff}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--textmuted)}
+.auth-error{color:#f87171;font-size:12px;margin-top:8px}
+.role-info{font-size:11px;color:var(--slate);margin-top:6px;padding:6px 8px;background:rgba(245,158,11,.1);border-radius:6px}
+.demo-hint{margin-top:1rem;font-size:11px;color:#5566aa;text-align:center;line-height:1.7}
+.demo-hint b{color:var(--amber2)}
+/* LAYOUT */
+#main-screen{display:flex;flex-direction:column;min-height:100vh}
+.topbar{display:flex;align-items:center;gap:12px;padding:0 1rem;height:52px;background:var(--navy);border-bottom:1px solid var(--navy3);position:sticky;top:0;z-index:100}
+.logo{font-family:'DM Serif Display',serif;font-size:21px;color:var(--amber);cursor:pointer;white-space:nowrap}
+.topbar-search{flex:1;max-width:360px}
+.topbar-search input{background:var(--navy3);border:1px solid #2a4070;height:34px;border-radius:20px;padding:0 14px;font-size:12px;color:#e8eeff}
+.topbar-search input::placeholder{color:var(--slate)}
+.topbar-actions{display:flex;align-items:center;gap:6px;margin-left:auto}
+.icon-btn{background:transparent;border:none;color:var(--slate2);cursor:pointer;position:relative;padding:6px 8px;border-radius:6px;font-size:14px;font-family:var(--ff);line-height:1}
+.icon-btn:hover{background:var(--navy2)}
+.badge{position:absolute;top:2px;right:2px;background:var(--amber);color:var(--navy);border-radius:50%;width:14px;height:14px;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:700}
+.user-chip{display:flex;align-items:center;gap:8px;padding:4px 10px;border-radius:8px;cursor:default;border:1px solid var(--navy3)}
+.avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:11px;flex-shrink:0}
+.av-amber{background:var(--amber);color:var(--navy)}
+.av-blue{background:var(--blue);color:#fff}
+.av-green{background:var(--green);color:#fff}
+.av-red{background:var(--red);color:#fff}
+.av-purple{background:#8b5cf6;color:#fff}
+.uname{font-size:12px;color:var(--slate2)}
+.role-badge{font-size:10px;padding:2px 6px;border-radius:4px;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.rb-supervisor{background:#fde68a;color:#78350f}
+.rb-student{background:#dbeafe;color:#1e40af}
+.rb-observer{background:#d1fae5;color:#065f46}
+/* SIDE + CONTENT */
+.content-area{display:flex;flex:1}
+.sidenav{width:178px;flex-shrink:0;background:var(--white);border-right:1px solid var(--border);padding:.875rem .625rem;display:flex;flex-direction:column;gap:2px}
+.nav-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--textmuted);transition:background .1s;white-space:nowrap}
+.nav-item:hover{background:var(--surface)}
+.nav-item.active{background:var(--surface);color:var(--text);font-weight:500}
+.nav-divider{height:1px;background:var(--border);margin:6px 0}
+.nav-section{font-size:10px;color:var(--slate);text-transform:uppercase;letter-spacing:.5px;padding:4px 10px;margin-top:2px}
+.main-content{flex:1;overflow-y:auto;padding:1.25rem;max-width:900px}
+/* CARDS */
+.card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:1rem 1.25rem;margin-bottom:.75rem}
+.project-card{cursor:pointer;transition:box-shadow .15s,transform .1s}
+.project-card:hover{box-shadow:0 4px 20px rgba(0,0,0,.07);transform:translateY(-1px)}
+.proj-title{font-family:'DM Serif Display',serif;font-size:16px;color:var(--text);margin-bottom:6px;line-height:1.35}
+.proj-meta{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;align-items:center}
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500}
+.tag-dept{background:#ede9fe;color:#5b21b6}
+.tag-set{background:#fef3c7;color:#92400e}
+.tag-pending{background:#fef9c3;color:#854d0e}
+.tag-approved{background:#d1fae5;color:#065f46}
+.tag-rejected{background:#fee2e2;color:#991b1b}
+.proj-summary{font-size:13px;color:var(--textmuted);line-height:1.65;margin-bottom:.75rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.eng-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.eng-btn{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--textmuted);background:transparent;border:none;cursor:pointer;padding:4px 7px;border-radius:6px;font-family:var(--ff)}
+.eng-btn:hover{background:var(--surface);color:var(--text)}
+.eng-btn.liked{color:var(--red)}
+.eng-btn.saved{color:var(--amber)}
+.author-line{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--textmuted);margin-bottom:.5rem}
+/* TABS */
+.tabs{display:flex;border-bottom:2px solid var(--border);margin-bottom:.875rem}
+.tab{padding:8px 14px;cursor:pointer;font-size:13px;color:var(--textmuted);border-bottom:2px solid transparent;margin-bottom:-2px;white-space:nowrap}
+.tab.active{color:var(--amber);border-bottom-color:var(--amber);font-weight:500}
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1.25rem}
+.stat-card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:.875rem 1rem}
+.stat-label{font-size:10px;color:var(--textmuted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+.stat-val{font-size:22px;font-weight:600;color:var(--text)}
+.stat-val.amb{color:var(--amber)}
+/* MODAL */
+.overlay{position:fixed;inset:0;background:rgba(10,22,40,.72);display:flex;align-items:flex-start;justify-content:center;z-index:200;padding:2rem 1rem;overflow-y:auto}
+.modal{background:var(--white);border-radius:16px;width:100%;max-width:600px;position:relative;margin:auto}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--white);z-index:10;border-radius:16px 16px 0 0}
+.modal-title{font-family:'DM Serif Display',serif;font-size:18px}
+.modal-body{padding:1.5rem;max-height:72vh;overflow-y:auto}
+.close-btn{background:transparent;border:none;font-size:20px;cursor:pointer;color:var(--textmuted);width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:6px;line-height:1}
+.close-btn:hover{background:var(--surface)}
+textarea{resize:vertical;min-height:68px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fg{margin-bottom:.75rem}
+.fg label{color:var(--textmuted);font-size:11px;font-weight:500;margin-bottom:4px;display:block;text-transform:uppercase;letter-spacing:.4px;margin-top:0}
+.fg input,.fg select,.fg textarea{background:var(--surface);border:1px solid var(--border);color:var(--text)}
+.fg input:focus,.fg select,.fg textarea:focus{border-color:var(--amber)}
+.fg select option{background:var(--white);color:var(--text)}
+.sec-h{font-family:'DM Serif Display',serif;font-size:14px;margin:1.25rem 0 .4rem;color:var(--text)}
+.comment-list{display:flex;flex-direction:column;gap:.75rem;margin-top:.75rem}
+.comment{display:flex;gap:10px}
+.comment-meta{display:flex;gap:8px;align-items:center;margin-bottom:2px}
+.comment-author{font-weight:500;font-size:12px}
+.comment-time{font-size:11px;color:var(--textmuted)}
+.comment-text{font-size:13px;color:var(--textmuted);line-height:1.5}
+.star-btn{background:none;border:none;cursor:pointer;font-size:20px;padding:2px;line-height:1;color:var(--border)}
+.star-btn.on{color:var(--amber)}
+/* NOTIF */
+.notif-panel{position:absolute;top:44px;right:0;width:300px;background:var(--white);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.12);z-index:150;overflow:hidden}
+.notif-hdr{padding:.75rem 1rem;border-bottom:1px solid var(--border);font-weight:500;font-size:13px;display:flex;justify-content:space-between;align-items:center}
+.notif-item{padding:.75rem 1rem;border-bottom:1px solid var(--border);font-size:12px;color:var(--textmuted);cursor:pointer;display:flex;gap:10px;line-height:1.5}
+.notif-item:hover{background:var(--surface)}
+.notif-item.unread{background:#fffbeb}
+.notif-dot{width:6px;height:6px;border-radius:50%;background:var(--amber);flex-shrink:0;margin-top:5px}
+/* DM */
+.dm-pane{display:flex;height:420px}
+.dm-sidebar{width:180px;border-right:1px solid var(--border);padding:.75rem;overflow-y:auto;flex-shrink:0}
+.dm-user{display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;cursor:pointer;margin-bottom:2px}
+.dm-user:hover,.dm-user.active{background:var(--surface)}
+.dm-chat{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.dm-msgs{flex:1;overflow-y:auto;padding:.75rem;display:flex;flex-direction:column;gap:.5rem}
+.dm-msg{max-width:75%;padding:8px 12px;border-radius:12px;font-size:13px;line-height:1.5}
+.dm-msg.me{background:var(--navy);color:#e8eeff;align-self:flex-end;border-bottom-right-radius:4px}
+.dm-msg.them{background:var(--surface);color:var(--text);align-self:flex-start;border-bottom-left-radius:4px}
+.dm-input-row{display:flex;gap:8px;padding:.75rem;border-top:1px solid var(--border)}
+.dm-input-row input{flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text)}
+/* LEADERBOARD */
+.lb-row{display:flex;align-items:center;gap:12px;padding:10px;border-radius:8px;cursor:pointer}
+.lb-row:hover{background:var(--surface)}
+.lb-rank{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0}
+.rk1{background:var(--amber);color:var(--navy)}
+.rk2{background:#c5d0e8;color:var(--navy)}
+.rk3{background:#f97316;color:#fff}
+.rkn{background:var(--surface);color:var(--textmuted)}
+.lb-info{flex:1;min-width:0}
+.lb-title{font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lb-dept{font-size:11px;color:var(--textmuted)}
+.score-num{font-size:15px;font-weight:600;color:var(--amber)}
+/* MISC */
+.empty{text-align:center;padding:3rem 1rem;color:var(--textmuted)}
+.empty-icon{font-size:36px;margin-bottom:.75rem}
+.filter-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.875rem}
+.chip{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid var(--border);color:var(--textmuted);background:var(--white)}
+.chip:hover{border-color:var(--amber);color:var(--amber)}
+.chip.active{background:var(--amber);color:var(--navy);border-color:var(--amber)}
+.collab-badge{background:#ede9fe;color:#5b21b6;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500}
+.approval-card{border-left:3px solid var(--amber)}
+.file-lbl{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--surface);border:1px dashed var(--border);border-radius:8px;cursor:pointer;font-size:12px;color:var(--textmuted)}
+.file-lbl:hover{border-color:var(--amber)}
+.notif-rel{position:relative}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const DEPTS=['Computer Science','Engineering','Business','Medicine','Law','Education','Sciences'];
+const SETS=['2020/2021','2021/2022','2022/2023','2023/2024','2024/2025'];
+const ROLE_LABELS={student:'Student',supervisor:'Supervisor',observer:'Observer'};
+const AV_COLORS=['av-amber','av-blue','av-green','av-red','av-purple'];
+const avColor=n=>AV_COLORS[Math.abs(n.split('').reduce((a,c)=>a+c.charCodeAt(0),0))%AV_COLORS.length];
+const initials=n=>n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+const ts=()=>Date.now();
+const timeAgo=t=>{const d=Date.now()-t;if(d<60000)return'just now';if(d<3600000)return Math.floor(d/60000)+'m ago';if(d<86400000)return Math.floor(d/3600000)+'h ago';return Math.floor(d/86400000)+'d ago';};
+const genId=()=>Math.random().toString(36).slice(2,10);
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+// ---- SEED DATA ----
+let users=[
+  {id:'u1',name:'Dr. Sarah Okonkwo',email:'s.okonkwo@uni.edu',role:'supervisor',dept:'Computer Science',set:'',pw:'demo'},
+  {id:'u2',name:'Chukwuemeka Adeyemi',email:'c.adeyemi@stu.edu',role:'student',dept:'Computer Science',set:'2022/2023',pw:'demo'},
+  {id:'u3',name:'Fatima Al-Hassan',email:'f.alhassan@stu.edu',role:'student',dept:'Engineering',set:'2023/2024',pw:'demo'},
+  {id:'u4',name:'Kwame Boateng',email:'k.boateng@stu.edu',role:'student',dept:'Business',set:'2021/2022',pw:'demo'},
+  {id:'u5',name:'Observer Guest',email:'guest@view.edu',role:'observer',dept:'',set:'',pw:'demo'},
+];
+let projects=[
+  {id:'p1',title:'Smart Waste Management via IoT Sensors',summary:'An IoT-based system to monitor fill levels in campus waste bins, routing collection trucks optimally to reduce fuel use and emissions across the university campus.',problem:'Campus waste overflow and inefficient collection scheduling causing environmental issues.',methodology:'Arduino sensors + LoRa network + real-time dashboard for supervisors and facilities staff.',dept:'Engineering',set:'2023/2024',limitations:'Limited to on-campus deployment; requires infrastructure investment.',authors:['u3'],supervisor:'u1',status:'approved',docName:'',likes:[],bookmarks:[],ratings:{u1:5,u2:4},comments:[{id:'c1',userId:'u1',text:'Outstanding work! Highly recommend for institutional adoption.',time:ts()-3600000*3}],createdAt:ts()-3600000*24*7},
+  {id:'p2',title:'AI-Powered Student Performance Predictor',summary:'Machine learning model predicting academic outcomes early, enabling timely interventions for at-risk students using anonymised historical grade data.',problem:'High failure and dropout rates due to late identification of struggling students.',methodology:'Random forest classifier trained on 3 years of anonymised grade records with SMOTE balancing.',dept:'Computer Science',set:'2022/2023',limitations:'Dependent on data quality; potential demographic bias in training data.',authors:['u2'],supervisor:'u1',status:'approved',docName:'research_paper.pdf',likes:['u3','u4'],bookmarks:['u5','u3'],ratings:{u1:5,u3:4,u4:4},comments:[{id:'c2',userId:'u3',text:'Really innovative approach! Did you consider neural networks for this?',time:ts()-1800000},{id:'c3',userId:'u1',text:'Excellent methodology. The SMOTE balancing was a smart choice.',time:ts()-900000}],createdAt:ts()-3600000*24*14},
+  {id:'p3',title:'Fintech Microfinance App for Students',summary:'Mobile application enabling peer-to-peer micro-loans among verified students with transparent repayment tracking and algorithmic credit scoring.',problem:'Students lack access to emergency funds and small credit facilities from formal institutions.',methodology:'Flutter cross-platform app with Firebase backend and a custom credit scoring algorithm.',dept:'Business',set:'2021/2022',limitations:'Regulatory compliance challenges vary by jurisdiction.',authors:['u4'],supervisor:'u1',status:'pending',docName:'',likes:['u2','u3'],bookmarks:['u2'],ratings:{u2:4},comments:[],createdAt:ts()-3600000*6},
+  {id:'p4',title:'Blockchain Certificate Verification System',summary:'Decentralised ledger for issuing and verifying academic certificates, eliminating document forgery and streamlining employer background checks.',problem:'Rampant certificate forgery in employment and postgraduate applications.',methodology:'Ethereum smart contracts + IPFS storage + React.js employer-facing portal.',dept:'Computer Science',set:'2023/2024',limitations:'Gas fees and blockchain finality times may slow real-time verification.',authors:['u2','u3'],supervisor:'u1',status:'approved',docName:'blockchain_whitepaper.pdf',likes:['u1','u4'],bookmarks:['u1'],ratings:{u1:5,u4:4},comments:[{id:'c4',userId:'u1',text:'This is exactly the kind of cross-departmental project institutions should fund.',time:ts()-7200000}],createdAt:ts()-3600000*24*21},
+];
+let dms={};
+let notifications=[
+  {id:'n1',userId:'u2',text:'Dr. Sarah Okonkwo approved your project "AI-Powered Student Performance Predictor" ✓',time:ts()-3600000*2,read:false},
+  {id:'n2',userId:'u3',text:'Chukwuemeka Adeyemi liked your project "Smart Waste Management via IoT Sensors"',time:ts()-1800000,read:false},
+  {id:'n3',userId:'u1',text:'New project submitted for review: "Fintech Microfinance App" by Kwame Boateng',time:ts()-3600000*5,read:false},
+];
+
+// ---- STATE ----
+let S={
+  screen:'auth',authTab:'login',loginEmail:'',loginPw:'',
+  regName:'',regEmail:'',regPw:'',regRole:'student',regDept:'Computer Science',regSet:'2022/2023',
+  regError:'',loginError:'',
+  currentUser:null,
+  view:'feed',feedTab:'school',deptFilter:'All',searchQ:'',
+  modal:null,selectedProject:null,
+  notifOpen:false,
+  np:{title:'',summary:'',problem:'',methodology:'',set:'2022/2023',dept:'Computer Science',limitations:'',docName:''},
+  newComment:'',
+  dmSelected:null,dmInput:'',
+  leaderDept:'All',approvTab:'pending',
+};
+
+const app=document.getElementById('app');
+let _pending=false;
+function ss(patch){Object.assign(S,patch);sr();}
+function sr(){if(!_pending){_pending=true;requestAnimationFrame(()=>{_pending=false;render();});}}
+
+const cu=()=>S.currentUser;
+const getUser=id=>users.find(u=>u.id===id);
+const unread=()=>notifications.filter(n=>n.userId===cu()?.id&&!n.read).length;
+const isSuper=()=>cu()?.role==='supervisor';
+const isStudent=()=>cu()?.role==='student';
+const canCreate=()=>isStudent()||isSuper();
+const scoreP=p=>{
+  const lk=p.likes.length*2;
+  const rv=Object.entries(p.ratings).map(([uid,v])=>{const u=getUser(uid);return u&&u.role==='supervisor'?v*1.5:v;});
+  const ra=rv.length?rv.reduce((a,b)=>a+b,0)/rv.length*10:0;
+  return Math.round(lk+ra+p.comments.length*3);
+};
+
+// ---- AUTH RENDER ----
+function renderAuth(){
+  const {authTab,loginEmail,loginPw,regName,regEmail,regPw,regRole,regDept,regSet,loginError,regError}=S;
+  app.innerHTML=`<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">PROTECH</div>
+    <div class="auth-sub">Collaborative Student Innovation Hub</div>
+    <div class="auth-tabs">
+      <button class="auth-tab ${authTab==='login'?'active':''}" onclick="ss({authTab:'login',loginError:'',regError:''})">Sign In</button>
+      <button class="auth-tab ${authTab==='register'?'active':''}" onclick="ss({authTab:'register',loginError:'',regError:''})">Register</button>
+    </div>
+    ${authTab==='login'?`
+      <label>Email</label>
+      <input type="email" value="${esc(loginEmail)}" oninput="ss({loginEmail:this.value})" placeholder="your@email.edu">
+      <label>Password</label>
+      <input type="password" value="${esc(loginPw)}" oninput="ss({loginPw:this.value})" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+      ${loginError?`<div class="auth-error">${esc(loginError)}</div>`:''}
+      <button class="btn btn-primary" style="width:100%;margin-top:1.25rem" onclick="doLogin()">Sign In</button>`
+    :`
+      <label>Full Name</label>
+      <input value="${esc(regName)}" oninput="ss({regName:this.value})" placeholder="Your full name">
+      <label>Email</label>
+      <input type="email" value="${esc(regEmail)}" oninput="ss({regEmail:this.value})" placeholder="your@email.edu">
+      <label>Password</label>
+      <input type="password" value="${esc(regPw)}" oninput="ss({regPw:this.value})" placeholder="••••••••">
+      <label>Role</label>
+      <select onchange="ss({regRole:this.value})">
+        ${['student','supervisor','observer'].map(r=>`<option value="${r}" ${r===regRole?'selected':''}>${ROLE_LABELS[r]}</option>`).join('')}
+      </select>
+      ${regRole==='supervisor'?`<div class="role-info">⚠ Supervisor accounts require an institutional .edu email for verification.</div>`:''}
+      <label>Department</label>
+      <select onchange="ss({regDept:this.value})">
+        ${DEPTS.map(d=>`<option value="${d}" ${d===regDept?'selected':''}>${esc(d)}</option>`).join('')}
+      </select>
+      ${regRole==='student'?`<label>Academic Set</label><select onchange="ss({regSet:this.value})">${SETS.map(s=>`<option value="${s}" ${s===regSet?'selected':''}>${s}</option>`).join('')}</select>`:''}
+      ${regError?`<div class="auth-error">${esc(regError)}</div>`:''}
+      <button class="btn btn-primary" style="width:100%;margin-top:1.25rem" onclick="doRegister()">Create Account</button>`}
+    <div class="demo-hint">
+      Demo passwords: <b>demo</b><br>
+      Supervisor: <b>s.okonkwo@uni.edu</b><br>
+      Student: <b>c.adeyemi@stu.edu</b> &bull; Observer: <b>guest@view.edu</b>
+    </div>
+  </div></div>`;
+}
+
+function doLogin(){
+  const u=users.find(u=>u.email===S.loginEmail&&u.pw===S.loginPw);
+  if(!u){ss({loginError:'Invalid email or password.'});return;}
+  ss({currentUser:u,screen:'main',view:'feed',loginError:''});
+}
+function doRegister(){
+  const {regName,regEmail,regPw,regRole,regDept,regSet}=S;
+  if(!regName.trim()||!regEmail.trim()||!regPw.trim()){ss({regError:'Please fill in all required fields.'});return;}
+  if(regRole==='supervisor'&&!regEmail.includes('.edu')){ss({regError:'Supervisor accounts require a verified .edu email address.'});return;}
+  if(users.find(u=>u.email===regEmail)){ss({regError:'This email is already registered.'});return;}
+  const u={id:genId(),name:regName,email:regEmail,role:regRole,dept:regDept,set:regRole==='student'?regSet:'',pw:regPw};
+  users.push(u);
+  ss({currentUser:u,screen:'main',view:'feed',regError:''});
+}
+
+// ---- MAIN RENDER ----
+function render(){
+  if(S.screen==='auth'){renderAuth();return;}
+  const u=cu(); const un=unread();
+  app.innerHTML=`<div id="main-screen">
+  <div class="topbar">
+    <div class="logo" onclick="ss({view:'feed',notifOpen:false})">PROTECH</div>
+    <div class="topbar-search">
+      <input placeholder="Search projects, topics, departments..." value="${esc(S.searchQ)}" oninput="ss({searchQ:this.value,view:'feed'})">
+    </div>
+    <div class="topbar-actions">
+      ${canCreate()?`<button class="btn btn-primary btn-sm" onclick="openNew()">+ New Project</button>`:''}
+      <div class="notif-rel">
+        <button class="icon-btn" onclick="ss({notifOpen:${!S.notifOpen}})" title="Notifications">🔔${un>0?`<span class="badge">${un}</span>`:''}</button>
+        ${S.notifOpen?renderNotifPanel():''}
+      </div>
+      <button class="icon-btn" onclick="ss({view:'dm',notifOpen:false})" title="Messages">✉</button>
+      <div class="user-chip">
+        <div class="avatar ${avColor(u.name)}">${initials(u.name)}</div>
+        <span class="uname">${esc(u.name.split(' ')[0])}</span>
+        <span class="role-badge rb-${u.role}">${ROLE_LABELS[u.role]}</span>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="ss({screen:'auth',currentUser:null,notifOpen:false})">Sign Out</button>
+    </div>
+  </div>
+  <div class="content-area">
+    <div class="sidenav">
+      ${nv('feed','🏠','Feed')}
+      ${nv('leaderboard','🏆','Leaderboard')}
+      ${isSuper()?nv('approvals','✓','Approvals'):''}
+      <div class="nav-divider"></div>
+      <div class="nav-section">My Space</div>
+      ${nv('my-projects','📄','My Projects')}
+      ${nv('bookmarks','⭐','Saved')}
+      ${nv('dm','✉','Messages')}
+    </div>
+    <div class="main-content">${renderView()}</div>
+  </div>
+  </div>
+  ${S.modal?renderModal():''}`;
+}
+
+const nv=(v,icon,label)=>`<div class="nav-item ${S.view===v?'active':''}" onclick="ss({view:'${v}',notifOpen:false})">${icon} ${label}</div>`;
+
+function renderView(){
+  switch(S.view){
+    case 'feed': return renderFeed();
+    case 'leaderboard': return renderLeaderboard();
+    case 'approvals': return renderApprovals();
+    case 'my-projects': return renderMyProjects();
+    case 'bookmarks': return renderBookmarks();
+    case 'dm': return renderDM();
+    default: return renderFeed();
+  }
+}
+
+// ---- FEED ----
+function renderFeed(){
+  const u=cu();
+  let ps=projects.filter(p=>p.status==='approved'||p.authors.includes(u.id)||u.role==='supervisor');
+  if(S.searchQ){const q=S.searchQ.toLowerCase();ps=ps.filter(p=>p.title.toLowerCase().includes(q)||p.summary.toLowerCase().includes(q)||p.dept.toLowerCase().includes(q)||p.problem.toLowerCase().includes(q));}
+  if(S.feedTab==='dept')ps=ps.filter(p=>p.dept===u.dept);
+  if(S.deptFilter!=='All')ps=ps.filter(p=>p.dept===S.deptFilter);
+  ps.sort((a,b)=>b.createdAt-a.createdAt);
+  return `
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-label">Total Projects</div><div class="stat-val amb">${projects.length}</div></div>
+    <div class="stat-card"><div class="stat-label">Approved</div><div class="stat-val">${projects.filter(p=>p.status==='approved').length}</div></div>
+    <div class="stat-card"><div class="stat-label">Departments</div><div class="stat-val">${[...new Set(projects.map(p=>p.dept))].length}</div></div>
+    <div class="stat-card"><div class="stat-label">Students</div><div class="stat-val">${users.filter(u=>u.role==='student').length}</div></div>
+  </div>
+  <div class="tabs">
+    <div class="tab ${S.feedTab==='school'?'active':''}" onclick="ss({feedTab:'school',deptFilter:'All'})">🏫 All Projects</div>
+    <div class="tab ${S.feedTab==='dept'?'active':''}" onclick="ss({feedTab:'dept',deptFilter:'All'})">🎓 ${esc(u.dept||'My Dept')}</div>
+  </div>
+  ${S.feedTab==='school'?`<div class="filter-chips">${['All',...DEPTS].map(d=>`<span class="chip ${S.deptFilter===d?'active':''}" onclick="ss({deptFilter:'${d}'})">${esc(d)}</span>`).join('')}</div>`:''}
+  ${ps.length===0?`<div class="empty"><div class="empty-icon">📂</div><div>No projects found${S.searchQ?' for "'+esc(S.searchQ)+'"':''}</div></div>`:''}
+  ${ps.map(p=>projCard(p)).join('')}`;
+}
+
+function projCard(p){
+  const u=cu();
+  const liked=p.likes.includes(u.id);
+  const saved=p.bookmarks.includes(u.id);
+  const avgR=Object.values(p.ratings).length?(Object.values(p.ratings).reduce((a,b)=>a+b,0)/Object.values(p.ratings).length).toFixed(1):'—';
+  const authors=p.authors.map(id=>getUser(id)?.name||'?').join(', ');
+  return `<div class="card project-card" onclick="openProj('${p.id}')">
+    <div class="proj-meta">
+      <span class="tag tag-dept">${esc(p.dept)}</span>
+      <span class="tag tag-set">${esc(p.set)}</span>
+      <span class="tag tag-${p.status}">${p.status}</span>
+      ${p.authors.length>1?`<span class="collab-badge">👥 Collaboration</span>`:''}
+    </div>
+    <div class="proj-title">${esc(p.title)}</div>
+    <div class="author-line">
+      ${p.authors.map(id=>{const u2=getUser(id);return u2?`<div class="avatar ${avColor(u2.name)}" style="width:18px;height:18px;font-size:9px">${initials(u2.name)}</div>`:''}).join('')}
+      <span>${esc(authors)}</span>
+      <span style="margin-left:auto;font-size:11px">${timeAgo(p.createdAt)}</span>
+    </div>
+    <div class="proj-summary">${esc(p.summary)}</div>
+    <div class="eng-row" onclick="event.stopPropagation()">
+      <button class="eng-btn ${liked?'liked':''}" onclick="toggleLike('${p.id}')">❤ ${p.likes.length}</button>
+      <button class="eng-btn" onclick="openProj('${p.id}')">💬 ${p.comments.length}</button>
+      <button class="eng-btn ${saved?'saved':''}" onclick="toggleBookmark('${p.id}')">⭐ ${p.bookmarks.length}</button>
+      <span class="eng-btn">★ ${avgR}</span>
+      <span style="margin-left:auto;font-size:11px;color:var(--textmuted)">📈 ${scoreP(p)} pts</span>
+    </div>
+  </div>`;
+}
+
+// ---- LEADERBOARD ----
+function renderLeaderboard(){
+  let ps=projects.filter(p=>p.status==='approved');
+  if(S.leaderDept!=='All')ps=ps.filter(p=>p.dept===S.leaderDept);
+  ps.sort((a,b)=>scoreP(b)-scoreP(a));
+  return `<div style="display:flex;align-items:center;gap:12px;margin-bottom:.875rem;flex-wrap:wrap">
+    <div style="font-family:'DM Serif Display',serif;font-size:20px;flex-shrink:0">🏆 Leaderboard</div>
+    <div class="filter-chips" style="margin:0">${['All',...DEPTS].map(d=>`<span class="chip ${S.leaderDept===d?'active':''}" onclick="ss({leaderDept:'${d}'})">${esc(d)}</span>`).join('')}</div>
+  </div>
+  <div class="card" style="padding:.75rem">
+    ${ps.length===0?`<div class="empty"><div class="empty-icon">🏆</div><div>No approved projects yet.</div></div>`:''}
+    ${ps.map((p,i)=>{
+      const u=cu();const liked=p.likes.includes(u.id);
+      const rk=i===0?'rk1':i===1?'rk2':i===2?'rk3':'rkn';
+      return`<div class="lb-row" onclick="openProj('${p.id}')">
+        <div class="lb-rank ${rk}">${i+1}</div>
+        <div class="lb-info">
+          <div class="lb-title">${esc(p.title)}</div>
+          <div class="lb-dept">${esc(p.dept)} · ${esc(p.set)}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="score-num">${scoreP(p)}</div>
+          <div style="font-size:10px;color:var(--textmuted)">pts</div>
+        </div>
+        <button class="eng-btn ${liked?'liked':''}" onclick="event.stopPropagation();toggleLike('${p.id}')" style="margin-left:8px">❤ ${p.likes.length}</button>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ---- APPROVALS ----
+function renderApprovals(){
+  const pending=projects.filter(p=>p.status==='pending');
+  const reviewed=projects.filter(p=>p.status!=='pending');
+  const list=S.approvTab==='pending'?pending:reviewed;
+  return `<div style="font-family:'DM Serif Display',serif;font-size:20px;margin-bottom:.875rem">✓ Approval Queue</div>
+  <div class="tabs">
+    <div class="tab ${S.approvTab==='pending'?'active':''}" onclick="ss({approvTab:'pending'})">Pending (${pending.length})</div>
+    <div class="tab ${S.approvTab==='reviewed'?'active':''}" onclick="ss({approvTab:'reviewed'})">Reviewed (${reviewed.length})</div>
+  </div>
+  ${list.length===0?`<div class="empty"><div class="empty-icon">📋</div><div>Nothing here.</div></div>`:''}
+  ${list.map(p=>`<div class="card approval-card">
+    <div class="proj-meta"><span class="tag tag-dept">${esc(p.dept)}</span><span class="tag tag-${p.status}">${p.status}</span><span class="tag tag-set">${esc(p.set)}</span></div>
+    <div class="proj-title" style="cursor:pointer" onclick="openProj('${p.id}')">${esc(p.title)}</div>
+    <div style="font-size:13px;color:var(--textmuted);margin:.5rem 0;line-height:1.6">${esc(p.summary)}</div>
+    <div style="font-size:12px;color:var(--textmuted);margin-bottom:.75rem">Authors: ${p.authors.map(id=>getUser(id)?.name||'?').join(', ')}</div>
+    ${p.status==='pending'?`<div style="display:flex;gap:8px">
+      <button class="btn btn-success btn-sm" onclick="approveP('${p.id}')">✓ Approve</button>
+      <button class="btn btn-danger btn-sm" onclick="rejectP('${p.id}')">✗ Reject</button>
+      <button class="btn btn-outline btn-sm" onclick="openProj('${p.id}')">View Full</button>
+    </div>`:''}</div>`).join('')}`;
+}
+
+// ---- MY PROJECTS ----
+function renderMyProjects(){
+  const u=cu();
+  const mine=projects.filter(p=>p.authors.includes(u.id)||(isSuper()&&p.supervisor===u.id));
+  return `<div style="font-family:'DM Serif Display',serif;font-size:20px;margin-bottom:.875rem">📄 My Projects</div>
+  ${mine.length===0?`<div class="empty"><div class="empty-icon">📄</div><div>No projects yet. ${canCreate()?'Create your first one!':''}</div></div>`:''}
+  ${mine.map(p=>projCard(p)).join('')}`;
+}
+
+// ---- BOOKMARKS ----
+function renderBookmarks(){
+  const u=cu();
+  const bm=projects.filter(p=>p.bookmarks.includes(u.id));
+  return `<div style="font-family:'DM Serif Display',serif;font-size:20px;margin-bottom:.875rem">⭐ Saved Projects</div>
+  ${bm.length===0?`<div class="empty"><div class="empty-icon">⭐</div><div>No saved projects yet.</div></div>`:''}
+  ${bm.map(p=>projCard(p)).join('')}`;
+}
+
+// ---- DM ----
+function renderDM(){
+  const u=cu();
+  const others=users.filter(x=>x.id!==u.id);
+  const sel=S.dmSelected;
+  const threadKey=(a,b)=>[a,b].sort().join('-');
+  const getThread=uid=>dms[threadKey(u.id,uid)]||[];
+  return `<div style="font-family:'DM Serif Display',serif;font-size:20px;margin-bottom:.875rem">✉ Messages</div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="dm-pane">
+      <div class="dm-sidebar">
+        ${others.map(x=>`<div class="dm-user ${sel===x.id?'active':''}" onclick="ss({dmSelected:'${x.id}'})">
+          <div class="avatar ${avColor(x.name)}" style="width:32px;height:32px;font-size:12px">${initials(x.name)}</div>
+          <div>
+            <div style="font-size:12px;font-weight:500">${esc(x.name.split(' ')[0])}</div>
+            <div style="font-size:10px;color:var(--textmuted)">${ROLE_LABELS[x.role]}</div>
+          </div>
+        </div>`).join('')}
+      </div>
+      ${sel?()=>{
+        const msgs=getThread(sel);const other=getUser(sel);
+        return`<div class="dm-chat">
+          <div style="padding:.75rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+            <div class="avatar ${avColor(other.name)}" style="width:30px;height:30px;font-size:11px">${initials(other.name)}</div>
+            <div><div style="font-size:13px;font-weight:500">${esc(other.name)}</div><div style="font-size:11px;color:var(--textmuted)">${ROLE_LABELS[other.role]}</div></div>
+          </div>
+          <div class="dm-msgs" id="dm-msgs">
+            ${msgs.length===0?`<div style="text-align:center;padding:2rem;color:var(--textmuted);font-size:13px">Start a conversation...</div>`:''}
+            ${msgs.map(m=>`<div class="dm-msg ${m.from===u.id?'me':'them'}">${esc(m.text)}<div style="font-size:10px;opacity:.6;margin-top:3px">${timeAgo(m.time)}</div></div>`).join('')}
+          </div>
+          <div class="dm-input-row">
+            <input id="dm-in" placeholder="Type a message..." value="${esc(S.dmInput)}" oninput="ss({dmInput:this.value})" onkeydown="if(event.key==='Enter')sendDM()">
+            <button class="btn btn-primary btn-sm" onclick="sendDM()">Send</button>
+          </div>
+        </div>`;
+      }():`<div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--textmuted);font-size:13px">Select a conversation to start messaging</div>`}
+    </div>
+  </div>`;
+}
+
+// ---- NOTIF PANEL ----
+function renderNotifPanel(){
+  const u=cu();
+  const mine=notifications.filter(n=>n.userId===u.id).slice(0,8);
+  return`<div class="notif-panel" onclick="event.stopPropagation()">
+    <div class="notif-hdr">Notifications <button class="btn btn-ghost btn-sm" onclick="markAllRead()">Mark all read</button></div>
+    ${mine.length===0?`<div style="padding:1.25rem;text-align:center;color:var(--textmuted);font-size:12px">No notifications</div>`:''}
+    ${mine.map(n=>`<div class="notif-item ${n.read?'':'unread'}" onclick="markRead('${n.id}')">
+      ${!n.read?'<div class="notif-dot"></div>':'<div style="width:6px"></div>'}
+      <div style="flex:1">${esc(n.text)}<div style="font-size:10px;color:var(--textmuted);margin-top:2px">${timeAgo(n.time)}</div></div>
+    </div>`).join('')}
+  </div>`;
+}
+
+// ---- MODALS ----
+function renderModal(){
+  if(S.modal==='project')return renderProjModal();
+  if(S.modal==='new')return renderNewModal();
+  return'';
+}
+function renderProjModal(){
+  const p=projects.find(x=>x.id===S.selectedProject);if(!p)return'';
+  const u=cu();
+  const liked=p.likes.includes(u.id);
+  const saved=p.bookmarks.includes(u.id);
+  const myR=p.ratings[u.id]||0;
+  const avgR=Object.values(p.ratings).length?(Object.values(p.ratings).reduce((a,b)=>a+b,0)/Object.values(p.ratings).length).toFixed(1):'No ratings yet';
+  const canCollab=isStudent()&&!p.authors.includes(u.id)&&p.status==='approved';
+  return`<div class="overlay" onclick="closeModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-hdr">
+      <div class="modal-title">${esc(p.title)}</div>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="proj-meta">
+        <span class="tag tag-dept">${esc(p.dept)}</span>
+        <span class="tag tag-set">${esc(p.set)}</span>
+        <span class="tag tag-${p.status}">${p.status}</span>
+        ${p.authors.length>1?`<span class="collab-badge">👥 Collaboration</span>`:''}
+      </div>
+      <div class="author-line" style="margin:.75rem 0">
+        ${p.authors.map(id=>{const u2=getUser(id);return u2?`<div class="avatar ${avColor(u2.name)}" style="width:22px;height:22px;font-size:10px">${initials(u2.name)}</div><span>${esc(u2.name)}</span>`:''}).join('<span style="color:var(--textmuted);margin:0 4px">&amp;</span>')}
+      </div>
+      <div class="sec-h">Abstract</div>
+      <div style="font-size:13px;color:var(--textmuted);line-height:1.7">${esc(p.summary)}</div>
+      <div class="sec-h">Problem Statement</div>
+      <div style="font-size:13px;color:var(--textmuted);line-height:1.7">${esc(p.problem)}</div>
+      <div class="sec-h">Methodology</div>
+      <div style="font-size:13px;color:var(--textmuted);line-height:1.7">${esc(p.methodology)}</div>
+      <div class="sec-h">Limitations</div>
+      <div style="font-size:13px;color:var(--textmuted);line-height:1.7">${esc(p.limitations)}</div>
+      ${p.docName?`<div class="sec-h">Documentation</div><div style="font-size:12px;color:var(--blue)">📄 ${esc(p.docName)}</div>`:''}
+      <div class="sec-h">Engagement</div>
+      <div class="eng-row" style="margin-bottom:.75rem">
+        <button class="eng-btn ${liked?'liked':''}" onclick="toggleLike('${p.id}');sr()">❤ ${p.likes.length} Likes</button>
+        <button class="eng-btn ${saved?'saved':''}" onclick="toggleBookmark('${p.id}');sr()">⭐ ${p.bookmarks.length} Saves</button>
+        <span class="eng-btn">★ ${avgR}</span>
+        <span style="margin-left:auto;font-size:11px;color:var(--textmuted)">Score: ${scoreP(p)} pts</span>
+      </div>
+      ${u.role!=='observer'?`<div class="sec-h">Your Rating</div>
+      <div style="display:flex;align-items:center;gap:4px;margin-bottom:.75rem">
+        ${[1,2,3,4,5].map(s=>`<button class="star-btn ${s<=myR?'on':''}" onclick="rateP('${p.id}',${s})">★</button>`).join('')}
+        <span style="font-size:12px;color:var(--textmuted);margin-left:8px">${myR?myR+'/5':'Not yet rated'}</span>
+      </div>`:''}
+      ${canCollab?`<div style="margin-bottom:.75rem"><button class="btn btn-primary btn-sm" onclick="joinCollab('${p.id}')">👥 Join as Collaborator</button></div>`:''}
+      ${isSuper()&&p.status==='pending'?`<div style="display:flex;gap:8px;margin-bottom:.75rem">
+        <button class="btn btn-success btn-sm" onclick="approveP('${p.id}');sr()">✓ Approve</button>
+        <button class="btn btn-danger btn-sm" onclick="rejectP('${p.id}');sr()">✗ Reject</button>
+      </div>`:''}
+      <div class="sec-h">Comments (${p.comments.length})</div>
+      <div class="comment-list">
+        ${p.comments.map(c=>{const u2=getUser(c.userId);if(!u2)return'';return`<div class="comment">
+          <div class="avatar ${avColor(u2.name)}" style="width:28px;height:28px;font-size:10px;flex-shrink:0">${initials(u2.name)}</div>
+          <div style="flex:1">
+            <div class="comment-meta"><span class="comment-author">${esc(u2.name)}</span><span class="role-badge rb-${u2.role}" style="font-size:9px">${ROLE_LABELS[u2.role]}</span><span class="comment-time">${timeAgo(c.time)}</span></div>
+            <div class="comment-text">${esc(c.text)}</div>
+          </div>
+        </div>`;}).join('')}
+      </div>
+      <div style="display:flex;gap:8px;margin-top:.875rem">
+        <input id="cmt-in" placeholder="Write a comment..." style="flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text)" value="${esc(S.newComment)}" oninput="ss({newComment:this.value})" onkeydown="if(event.key==='Enter')postCmt('${p.id}')">
+        <button class="btn btn-primary btn-sm" onclick="postCmt('${p.id}')">Post</button>
+      </div>
+    </div>
+  </div></div>`;
+}
+function renderNewModal(){
+  const n=S.np;
+  return`<div class="overlay" onclick="closeModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-hdr">
+      <div class="modal-title">Submit New Project</div>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="fg"><label>Project Title *</label><input value="${esc(n.title)}" oninput="pnp('title',this.value)" placeholder="A clear, descriptive title"></div>
+      <div class="fg"><label>Summary / Abstract *</label><textarea oninput="pnp('summary',this.value)" placeholder="Brief overview of the project and its goals...">${esc(n.summary)}</textarea></div>
+      <div class="fg"><label>Problem Addressed *</label><textarea oninput="pnp('problem',this.value)" placeholder="What specific problem does this project solve?">${esc(n.problem)}</textarea></div>
+      <div class="fg"><label>Methodology *</label><textarea oninput="pnp('methodology',this.value)" placeholder="Tools, frameworks, techniques, and approach used...">${esc(n.methodology)}</textarea></div>
+      <div class="form-row">
+        <div class="fg"><label>Department</label>
+          <select onchange="pnp('dept',this.value)">${DEPTS.map(d=>`<option value="${d}" ${d===n.dept?'selected':''}>${esc(d)}</option>`).join('')}</select>
+        </div>
+        <div class="fg"><label>Academic Set</label>
+          <select onchange="pnp('set',this.value)">${SETS.map(s=>`<option value="${s}" ${s===n.set?'selected':''}>${s}</option>`).join('')}</select>
+        </div>
+      </div>
+      <div class="fg"><label>Limitations</label><textarea oninput="pnp('limitations',this.value)" placeholder="Known limitations or scope boundaries of this project...">${esc(n.limitations)}</textarea></div>
+      <div class="fg"><label>Documentation (optional)</label>
+        <label class="file-lbl">
+          📄 ${n.docName||'Click to attach a document (PDF, DOCX, etc.)'}
+          <input type="file" style="display:none" onchange="pnp('docName',this.files[0]?.name||'')">
+        </label>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:1.25rem">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="submitP()">Submit for Review →</button>
+      </div>
+    </div>
+  </div></div>`;
+}
+
+// ---- ACTIONS ----
+function openProj(id){ss({modal:'project',selectedProject:id,notifOpen:false});}
+function closeModal(){ss({modal:null,selectedProject:null,newComment:''});}
+function openNew(){ss({modal:'new',np:{title:'',summary:'',problem:'',methodology:'',set:'2022/2023',dept:'Computer Science',limitations:'',docName:''},notifOpen:false});}
+function pnp(k,v){ss({np:{...S.np,[k]:v}});}
+
+function toggleLike(id){
+  const u=cu();const p=projects.find(x=>x.id===id);if(!p)return;
+  if(p.likes.includes(u.id)){p.likes=p.likes.filter(x=>x!==u.id);}
+  else{p.likes.push(u.id);addNotif(p.authors[0],`${u.name} liked your project "${p.title}"`);}
+  sr();
+}
+function toggleBookmark(id){
+  const u=cu();const p=projects.find(x=>x.id===id);if(!p)return;
+  if(p.bookmarks.includes(u.id))p.bookmarks=p.bookmarks.filter(x=>x!==u.id);
+  else p.bookmarks.push(u.id);
+  sr();
+}
+function rateP(id,val){
+  const u=cu();const p=projects.find(x=>x.id===id);if(!p)return;
+  p.ratings[u.id]=val;sr();
+}
+function postCmt(id){
+  const u=cu();const p=projects.find(x=>x.id===id);
+  const txt=S.newComment.trim();if(!txt||!p)return;
+  p.comments.push({id:genId(),userId:u.id,text:txt,time:ts()});
+  addNotif(p.authors[0],`${u.name} commented on "${p.title}"`);
+  ss({newComment:''});
+}
+function approveP(id){
+  const p=projects.find(x=>x.id===id);if(!p)return;
+  p.status='approved';
+  addNotif(p.authors[0],`Your project "${p.title}" has been approved! 🎉`);
+  sr();
+}
+function rejectP(id){
+  const p=projects.find(x=>x.id===id);if(!p)return;
+  p.status='rejected';
+  addNotif(p.authors[0],`Your project "${p.title}" was not approved. Please revise and resubmit.`);
+  sr();
+}
+function submitP(){
+  const u=cu();const n=S.np;
+  if(!n.title.trim()||!n.summary.trim()||!n.problem.trim()||!n.methodology.trim()){alert('Please fill in all required fields (*).');return;}
+  const id=genId();
+  projects.unshift({id,title:n.title,summary:n.summary,problem:n.problem,methodology:n.methodology,dept:n.dept,set:n.set,limitations:n.limitations,docName:n.docName||'',authors:[u.id],supervisor:'u1',status:'pending',likes:[],bookmarks:[],ratings:{},comments:[],createdAt:ts()});
+  addNotif('u1',`New project submitted for review: "${n.title}" by ${u.name}`);
+  closeModal();
+  ss({view:'my-projects'});
+}
+function joinCollab(id){
+  const u=cu();const p=projects.find(x=>x.id===id);if(!p||p.authors.includes(u.id))return;
+  if(confirm(`Join "${p.title}" as a collaborator?`)){
+    p.authors.push(u.id);
+    addNotif(p.authors[0],`${u.name} joined your project "${p.title}" as a collaborator!`);
+    sr();
+  }
+}
+function addNotif(userId,text){if(!userId)return;notifications.unshift({id:genId(),userId,text,time:ts(),read:false});}
+function markRead(id){const n=notifications.find(x=>x.id===id);if(n)n.read=true;sr();}
+function markAllRead(){const u=cu();notifications.filter(n=>n.userId===u.id).forEach(n=>n.read=true);sr();}
+function sendDM(){
+  const u=cu();const other=S.dmSelected;const txt=S.dmInput.trim();
+  if(!txt||!other)return;
+  const key=[u.id,other].sort().join('-');
+  if(!dms[key])dms[key]=[];
+  dms[key].push({id:genId(),from:u.id,text:txt,time:ts()});
+  addNotif(other,`${u.name}: ${txt.slice(0,50)}`);
+  ss({dmInput:''});
+  setTimeout(()=>{const el=document.getElementById('dm-msgs');if(el)el.scrollTop=el.scrollHeight;},80);
+}
+
+// Close notif panel on outside click
+document.addEventListener('click',e=>{if(S.notifOpen&&!e.target.closest('.notif-rel'))ss({notifOpen:false});});
+
+render();
+</script>
+</body>
+</html>
