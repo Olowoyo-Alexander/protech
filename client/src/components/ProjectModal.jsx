@@ -318,7 +318,7 @@ export default function ProjectModal({ id }) {
               <div className="prose">{p.limitations}</div>
             </>
           )}
-          {p.docName && (
+          {p.docName && (!p.locked || canManage || isAuthor) && (
             <>
               <div className="sec-h doc-head">
                 <button
