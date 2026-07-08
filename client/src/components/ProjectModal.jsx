@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useUI } from '../context/UIContext.jsx';
 import { useConfirm } from '../context/ConfirmContext.jsx';
 import Avatar from './Avatar.jsx';
-import { HeartIcon, BookmarkIcon, StarIcon } from './Icons.jsx';
+import { HeartIcon, BookmarkIcon, StarIcon, OpenInNewTabIcon, DownloadIcon } from './Icons.jsx';
 import { ROLE_LABELS, timeAgo, groupTheme, recoMeta, displayName } from '../utils.js';
 
 export default function ProjectModal({ id }) {
@@ -321,8 +321,12 @@ export default function ProjectModal({ id }) {
                 <span>Documentation</span>
                 {p.docUrl && (
                   <span className="doc-actions">
-                    <a href={p.docUrl} target="_blank" rel="noreferrer" title="Open in new tab" aria-label="Open in new tab">↗</a>
-                    <a href={p.docUrl.replace('/upload/', '/upload/fl_attachment/')} title="Download" aria-label="Download">⬇</a>
+                    <a href={p.docUrl} target="_blank" rel="noreferrer" title="Open in new tab" aria-label="Open in new tab">
+                      <OpenInNewTabIcon />
+                    </a>
+                    <a href={p.docUrl.replace('/upload/', '/upload/fl_attachment/')} title="Download" aria-label="Download">
+                      <DownloadIcon />
+                    </a>
                   </span>
                 )}
               </div>
