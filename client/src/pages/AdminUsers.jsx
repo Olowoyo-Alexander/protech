@@ -94,6 +94,75 @@ function AdminPortalCard({ gw, origin, adminEmail }) {
   );
 }
 
+// Same lock pattern as AdminPortalCard: collapsed until clicked, then a
+// password field; once the signed-in admin's password is confirmed, fetch
+// and reveal the current ADMIN_SETUP_KEY (or that admin registration is
+// closed, if it's unset).
+function AdminSetupKeyCard({ adminEmail }) {
+  const [open, setOpen] = useState(false);
+  const [pw, setPw] = useState('');
+  const [unlocked, setUnlocked] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [wrong, setWrong] = useState(false);
+  const [key, setKey] = useState(undefined); // undefined = not fetched yet
+
+  useEffect(() => {
+    if (unlocked || !pw) {
+      setChecking(false);
+      setWrong(false);
+      return;
+    }
+    setChecking(true);
+    setWrong(false);
+    const t = setTimeout(async () => {
+      try {
+        await api.post('/auth/login', { email: adminEmail, password: pw, expectedRole: 'admin' });
+        const { data } = await api.get('/admin/setup-key');
+        setKey(data.key);
+        setUnlocked(true);
+      } catch {
+        setWrong(true);
+      } finally {
+        setChecking(false);
+      }
+    }, 450);
+    return () => clearTimeout(t);
+  }, [pw, unlocked, adminEmail]);
+
+  const revealed = unlocked;
+  return (
+    <div className={`portal-card ${revealed ? 'open' : ''}`}>
+      <button className="portal-card-hd" onClick={() => setOpen((o) => !o)} aria-expanded={open || revealed}>
+        <span className="portal-ic">🔑</span> Admin Setup Key
+        <span className="portal-caret" aria-hidden="true">{revealed ? '🔓' : open ? '▾' : '🔒'}</span>
+      </button>
+      {revealed ? (
+        <div className="portal-card-links">
+          {key ? <Copyable prefix="Key: " value={key} /> : (
+            <div className="field-help" style={{ marginTop: 0 }}>Not set — admin registration is currently closed.</div>
+          )}
+        </div>
+      ) : open ? (
+        <div className="portal-lock">
+          <input
+            type="password"
+            autoComplete="off"
+            autoFocus
+            placeholder="Enter your admin password"
+            value={pw}
+            onChange={(e) => setPw(e.target.value)}
+          />
+          {checking ? (
+            <div className="field-help" style={{ marginTop: 0 }}>Checking…</div>
+          ) : wrong ? (
+            <div className="auth-error" style={{ marginTop: 0 }}>Incorrect password</div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 // The dedicated sign-in / registration URLs for each account type. Every card
 // hides its links until clicked; the admin card additionally requires the
 // signed-in admin's password.
@@ -110,6 +179,7 @@ function PortalLinks({ adminEmail }) {
             <PortalCard key={gw.slug} gw={gw} origin={origin} />
           )
         )}
+        <AdminSetupKeyCard adminEmail={adminEmail} />
       </div>
     </div>
   );

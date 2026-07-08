@@ -9,6 +9,7 @@ import {
   resetUserPassword,
   overview,
   listGroups,
+  getAdminSetupKey,
 } from '../controllers/adminController.js';
 import { updateSettings } from '../controllers/settingsController.js';
 import { protect, authorize } from '../middleware/auth.js';
@@ -17,6 +18,7 @@ const router = express.Router();
 router.use(protect, authorize('admin'));
 
 router.get('/overview', overview);
+router.get('/setup-key', getAdminSetupKey);
 router.get('/groups', listGroups);
 router.get('/users', listUsers);
 router.patch('/users/:id/role', changeRole);

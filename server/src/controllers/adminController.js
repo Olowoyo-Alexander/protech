@@ -181,6 +181,15 @@ export const deleteUser = asyncHandler(async (req, res) => {
   res.json({ message: 'User deleted' });
 });
 
+// GET /api/admin/setup-key  — the current ADMIN_SETUP_KEY, for an already-
+// authenticated admin to retrieve (e.g. to hand to a new admin, or confirm
+// it's blank/closed). Requires no extra proof beyond the existing admin JWT
+// — any password re-entry gating this is a client-side UX lock, not an
+// access-control boundary.
+export const getAdminSetupKey = asyncHandler(async (req, res) => {
+  res.json({ key: process.env.ADMIN_SETUP_KEY || null });
+});
+
 // GET /api/admin/overview  — platform-wide analytics
 export const overview = asyncHandler(async (req, res) => {
   // Anonymized (deleted) accounts are excluded from every user statistic.
