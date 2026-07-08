@@ -21,6 +21,9 @@ export default function ProjectModal({ id }) {
   // Supervisor rating draft (a rating must be accompanied by a comment).
   const [rateVal, setRateVal] = useState(0);
   const [rateComment, setRateComment] = useState('');
+  // Documentation preview starts open; collapsible since PDFs take up a lot
+  // of vertical space in the modal.
+  const [docOpen, setDocOpen] = useState(true);
 
   const load = () => api.get(`/projects/${id}`).then((r) => setP(r.data)).catch((e) => setError(e.message));
   useEffect(() => {
@@ -318,7 +321,15 @@ export default function ProjectModal({ id }) {
           {p.docName && (
             <>
               <div className="sec-h doc-head">
-                <span>Documentation</span>
+                <button
+                  type="button"
+                  className="doc-toggle"
+                  onClick={() => setDocOpen((o) => !o)}
+                  aria-expanded={docOpen}
+                >
+                  <span className="doc-toggle-caret" aria-hidden="true">{docOpen ? '▾' : '▸'}</span>
+                  Documentation
+                </button>
                 {p.docUrl && (
                   <span className="doc-actions">
                     <a href={p.docUrl} target="_blank" rel="noreferrer" title="Open in new tab" aria-label="Open in new tab">
@@ -330,20 +341,22 @@ export default function ProjectModal({ id }) {
                   </span>
                 )}
               </div>
-              {p.docUrl ? (
-                p.docName.toLowerCase().endsWith('.pdf') ? (
-                  // PDFs preview inline in the browser's built-in viewer.
-                  <iframe className="doc-viewer" src={p.docUrl} title={p.docName} />
+              {docOpen && (
+                p.docUrl ? (
+                  p.docName.toLowerCase().endsWith('.pdf') ? (
+                    // PDFs preview inline in the browser's built-in viewer.
+                    <iframe className="doc-viewer" src={p.docUrl} title={p.docName} />
+                  ) : (
+                    // Non-PDF types (DOCX, etc.) can't be previewed reliably in-browser,
+                    // so we surface the file with open/download actions instead.
+                    <div className="doc-fallback">
+                      📄 {p.docName}
+                      <span className="doc-muted"> — inline preview is available for PDFs; use the actions above to open or download.</span>
+                    </div>
+                  )
                 ) : (
-                  // Non-PDF types (DOCX, etc.) can't be previewed reliably in-browser,
-                  // so we surface the file with open/download actions instead.
-                  <div className="doc-fallback">
-                    📄 {p.docName}
-                    <span className="doc-muted"> — inline preview is available for PDFs; use the actions above to open or download.</span>
-                  </div>
+                  <div className="doc-fallback doc-muted">📄 {p.docName} (file not available)</div>
                 )
-              ) : (
-                <div className="doc-fallback doc-muted">📄 {p.docName} (file not available)</div>
               )}
             </>
           )}

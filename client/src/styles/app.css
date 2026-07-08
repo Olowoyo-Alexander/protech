@@ -1400,6 +1400,9 @@ body.no-scroll{overflow:hidden}
 
 /* --- Project documentation inline viewer -------------------------------- */
 .doc-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.doc-toggle{display:inline-flex;align-items:center;gap:6px;background:none;border:none;padding:0;
+  font-family:inherit;font-size:inherit;color:inherit;cursor:pointer}
+.doc-toggle-caret{font-size:11px;color:var(--textmuted)}
 .doc-actions{display:inline-flex;gap:6px}
 .doc-actions a{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;
   border-radius:6px;color:var(--blue);font-size:15px;text-decoration:none}
