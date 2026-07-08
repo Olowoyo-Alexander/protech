@@ -143,7 +143,7 @@ export const searchSupervisors = asyncHandler(async (req, res) => {
     filter.name = rx;
   }
   const sups = await User.find(filter)
-    .select('name title dept avatarColor')
+    .select('name title dept avatarColor supervisorTag')
     .sort('name')
     .limit(8);
   res.json(sups);

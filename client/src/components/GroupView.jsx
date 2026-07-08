@@ -27,7 +27,8 @@ export default function GroupView({ id, onChanged, onPatched, onBack, onActivity
   const [editName, setEditName] = useState('');
   const [editDesc, setEditDesc] = useState('');
 
-  // Unified add-participant field (matric OR supervisor name) + suggestions.
+  // Unified add-participant field (matric OR supervisor tag) — the dropdown
+  // suggests by name for convenience, but submits the supervisor's tag.
   const [showAdd, setShowAdd] = useState(false);
   const [addQuery, setAddQuery] = useState('');
   const [supResults, setSupResults] = useState([]);
@@ -513,7 +514,7 @@ export default function GroupView({ id, onChanged, onPatched, onBack, onActivity
                     {supOpen && supResults.length > 0 && (
                       <ul className="autocomplete-list">
                         {supResults.map((s) => (
-                          <li key={s._id} onMouseDown={() => { setAddQuery(s.name); setSupResults([]); setSupOpen(false); }}>
+                          <li key={s._id} onMouseDown={() => { setAddQuery(s.supervisorTag); setSupResults([]); setSupOpen(false); }}>
                             <span className="ac-name">{displayName(s)}</span>
                             {s.dept && <span className="ac-meta">{s.dept}</span>}
                           </li>

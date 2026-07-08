@@ -7,8 +7,12 @@ import { notify } from '../utils/notify.js';
 import { emitToUser } from '../socket/index.js';
 
 // Matric number format (e.g. ETC/22/001) — used to tell a student matric apart
-// from a supervisor's full name in the unified "add participant" field.
+// from a supervisor's tag in the unified "add participant" field.
 const MATRIC_RE = /^[A-Z]{2,4}\/\d{2}\/\d{3}$/;
+
+// Exact, case-insensitive match — mirrors the tag lookup used everywhere else
+// a supervisor is found by their exclusive tag (Messages, Projects).
+const tagExact = (t) => new RegExp(`^${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
 
 const MEMBER_SELECT = 'name title role dept set matric avatarColor';
 
@@ -166,10 +170,12 @@ export const getGroup = asyncHandler(async (req, res) => {
   res.json(serialize(g, req.user));
 });
 
-// POST /api/groups/:id/invite  { query } | { matric } | { name }
-// Add a participant from a single field: a matric number resolves to a student,
-// anything else is treated as a supervisor's full name. (matric/name still
-// accepted explicitly.) The target must accept before joining (requirement 7).
+// POST /api/groups/:id/invite  { query } | { matric } | { tag }
+// Add a participant from a single field: a matric number resolves to a
+// student, anything else is treated as a supervisor's exclusive tag — the
+// same resolution used everywhere else a supervisor is found (Messages,
+// Projects), not their name (names aren't guaranteed unique). The target
+// must accept before joining (requirement 7).
 export const inviteMember = asyncHandler(async (req, res) => {
   const g = await Group.findById(req.params.id);
   if (!g) {
@@ -182,12 +188,12 @@ export const inviteMember = asyncHandler(async (req, res) => {
   }
 
   let matric = String(req.body.matric || '').trim();
-  let name = String(req.body.name || '').trim();
-  // Unified single field: detect matric format → student, else supervisor name.
+  let tag = String(req.body.tag || '').trim();
+  // Unified single field: detect matric format → student, else supervisor tag.
   const query = String(req.body.query || '').trim();
-  if (!matric && !name && query) {
+  if (!matric && !tag && query) {
     if (MATRIC_RE.test(query.toUpperCase())) matric = query.toUpperCase();
-    else name = query;
+    else tag = query;
   }
 
   let target = null;
@@ -198,18 +204,16 @@ export const inviteMember = asyncHandler(async (req, res) => {
       res.status(404);
       throw new Error('No active student found with that matric number');
     }
-  } else if (name) {
-    // Supervisors are added by full name (exact, case-insensitive) — same
-    // resolution used when tagging a supervisor on a project.
-    const exact = new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
-    target = await User.findOne({ role: 'supervisor', verified: true, active: true, name: exact });
+  } else if (tag) {
+    // Supervisors are added by their exclusive tag (exact, case-insensitive).
+    target = await User.findOne({ role: 'supervisor', verified: true, active: true, supervisorTag: tagExact(tag) });
     if (!target) {
       res.status(404);
-      throw new Error('No supervisor found by that full name');
+      throw new Error('No supervisor found with that tag');
     }
   } else {
     res.status(400);
-    throw new Error('Provide a student matric number or a supervisor full name');
+    throw new Error('Provide a student matric number or a supervisor tag');
   }
 
   // Only students & supervisors can be group members (requirement 2).
