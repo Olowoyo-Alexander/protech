@@ -24,7 +24,7 @@ async function start() {
   server.listen(PORT, () => {
     console.log(`✓ PROTECH API running on http://localhost:${PORT}`);
     console.log(`  Cloudinary: ${cloudinaryReady() ? 'enabled' : 'NOT configured (uploads disabled)'}`);
-    console.log(`  SMTP email: ${process.env.SMTP_USER ? 'enabled' : 'dev mode (codes logged to console)'}`);
+    console.log(`  Email (Brevo): ${process.env.BREVO_API_KEY ? 'enabled' : 'dev mode (codes logged to console)'}`);
   });
 }
 

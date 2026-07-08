@@ -89,9 +89,9 @@ cp client/.env.example client/.env   # optional — only for a deployed backend
 | Key | Purpose | If left blank |
 | --- | --- | --- |
 | `MONGO_URI` | Mongo connection (local or **Atlas**) | embedded DB used when `USE_EMBEDDED_DB=true` |
-| `JWT_SECRET` | Token signing | a dev default is provided |
+| `JWT_SECRET` | Token signing | **required** — no fallback, `jsonwebtoken` throws if unset |
 | `CLOUDINARY_*` | File uploads | uploads disabled (project still saves, filename kept) |
-| `SMTP_*` | Supervisor verification emails | code is logged to the server console |
+| `BREVO_*` | Supervisor verification emails | code is logged to the server console |
 
 ### Using a real MongoDB instead of the embedded one
 Set `MONGO_URI` (e.g. a free [MongoDB Atlas](https://www.mongodb.com/atlas) cluster), then run
@@ -108,8 +108,11 @@ Create a free [Cloudinary](https://cloudinary.com) account and set `CLOUDINARY_C
 their secure URL is saved on the project.
 
 ### Enabling real verification emails
-Set `SMTP_USER` / `SMTP_PASS` (for Gmail, use an [App Password](https://myaccount.google.com/apppasswords)).
-Without them, the verification code is printed to the server console and surfaced in the UI for dev.
+Set `BREVO_API_KEY` and `BREVO_SENDER_EMAIL` — sign up free at [Brevo](https://www.brevo.com), create
+an API key, and verify a single sender email (just a confirmation link, no domain/DNS setup needed).
+Sent over Brevo's HTTPS API rather than raw SMTP, since most PaaS free tiers (Render included) block
+outbound SMTP ports entirely. Without `BREVO_API_KEY`, the verification code is printed to the server
+console and surfaced in the UI for dev.
 
 ---
 

@@ -22,16 +22,12 @@ services:
       # Fill these in the Render dashboard (kept out of git):
       - key: MONGO_URI            # MongoDB Atlas connection string
         sync: false
-      - key: SMTP_HOST
-        value: smtp.gmail.com
-      - key: SMTP_PORT
-        value: "587"
-      - key: SMTP_USER
+      - key: BREVO_API_KEY
         sync: false
-      - key: SMTP_PASS
+      - key: BREVO_SENDER_EMAIL
         sync: false
-      - key: SMTP_FROM
-        sync: false
+      - key: BREVO_SENDER_NAME
+        value: PROTECH
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
       - key: CLOUDINARY_API_KEY

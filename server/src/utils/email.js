@@ -1,28 +1,7 @@
-import nodemailer from 'nodemailer';
-
-// The transporter is built lazily on first use — NOT at module load — because
-// this module is imported (via the controllers) before server.js runs
-// dotenv.config(), so process.env.SMTP_* aren't populated yet at import time.
-// Reading them on first send guarantees the env is ready.
-let transporter;
-let transporterInit = false;
-function getTransporter() {
-  if (!transporterInit) {
-    transporterInit = true;
-    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
-      transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT) || 587,
-        secure: Number(process.env.SMTP_PORT) === 465,
-        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-      });
-    } else {
-      transporter = null;
-    }
-  }
-  return transporter;
-}
-
+// Sent via Brevo's HTTPS API (not raw SMTP) — Render's free tier blocks
+// outbound SMTP ports (25/465/587) entirely, so nodemailer times out no
+// matter what credentials are supplied. Brevo's API runs over port 443 like
+// any other HTTP call, same as Cloudinary already does.
 const appUrl = () => process.env.CLIENT_URL || 'http://localhost:5173';
 
 // Wrap message content in the shared PROTECH-branded shell so every email looks
@@ -49,19 +28,34 @@ function brand(body) {
 // so every flow still works end-to-end in development.
 async function sendMail({ to, subject, text, html }) {
   if (!to) return { delivered: false };
-  const t = getTransporter();
-  if (!t) {
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) {
     console.log(`\n[DEV EMAIL] To: ${to}\n  Subject: ${subject}\n  ${text.replace(/\n/g, '\n  ')}\n`);
     return { delivered: false };
   }
   try {
-    await t.sendMail({
-      from: process.env.SMTP_FROM || 'PROTECH <no-reply@prostech.edu>',
-      to,
-      subject,
-      text,
-      html: brand(html),
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/json',
+        'api-key': apiKey,
+      },
+      body: JSON.stringify({
+        sender: {
+          name: process.env.BREVO_SENDER_NAME || 'PROTECH',
+          email: process.env.BREVO_SENDER_EMAIL,
+        },
+        to: [{ email: to }],
+        subject,
+        textContent: text,
+        htmlContent: brand(html),
+      }),
     });
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`Brevo ${res.status}: ${body}`);
+    }
     return { delivered: true };
   } catch (err) {
     console.error(`[EMAIL] Failed to send "${subject}" to ${to}:`, err.message);
