@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { STUDENT_DEPTS, SETS, isValidEmail, suggestEmail, isValidMatric, passwordStrength } from '../utils.js';
 
@@ -307,6 +307,10 @@ function Gateway({ gw }) {
                 </button>
               </>
             )}
+
+            <div className="demo-hint" style={{ marginTop: '1rem' }}>
+              Not you? <Link to="/access-denied">Choose a different role</Link>
+            </div>
           </>
         )}
       </div>
