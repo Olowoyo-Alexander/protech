@@ -1,15 +1,13 @@
-# Render Blueprint for the PROTECH API (backend).
+# Render Blueprint for PROTECH (single service: API + built React client).
 # In Render: New > Blueprint > connect this repo. Then fill in the env vars
 # marked `sync: false` in the dashboard (they are NOT stored in git).
-# The Vite frontend deploys separately on Vercel (see client/vercel.json).
 services:
   - type: web
-    name: protech-api
+    name: protech
     runtime: node
-    rootDir: server
     plan: free
-    buildCommand: npm install
-    startCommand: npm start
+    buildCommand: npm install --prefix server && npm install --prefix client && npm run build --prefix client
+    startCommand: npm start --prefix server
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
@@ -23,8 +21,6 @@ services:
         value: 7d
       # Fill these in the Render dashboard (kept out of git):
       - key: MONGO_URI            # MongoDB Atlas connection string
-        sync: false
-      - key: CLIENT_URL           # the deployed Vercel URL, e.g. https://protech.vercel.app
         sync: false
       - key: SMTP_HOST
         value: smtp.gmail.com

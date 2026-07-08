@@ -163,8 +163,11 @@ PROJECT/
 
 ```bash
 npm run build --prefix client      # outputs client/dist
-npm start --prefix server          # serves the API (set MONGO_URI to Atlas)
+npm start --prefix server          # serves the API AND client/dist from one process
 ```
 
-Deploy the API (Render / Railway / Fly) and the static `client/dist` (Vercel / Netlify),
-pointing the client at the API via `VITE_API_URL`.
+**Deployment is single-service:** the Express server serves the built React app
+directly (see `server/src/app.js`), so the whole app deploys as one Render web
+service backed by MongoDB Atlas — no separate static host needed. See
+`render.yaml` for the blueprint and `.env.render.example` for the env vars to
+fill in on Render.
