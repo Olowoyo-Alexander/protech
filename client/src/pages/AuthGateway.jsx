@@ -38,6 +38,7 @@ function Gateway({ gw }) {
     set: '2022/2023',
     matric: '',
     title: 'Dr.',
+    adminSetupKey: '',
   });
 
   // Track which email fields have been blurred so we only flag a bad format
@@ -314,6 +315,15 @@ function Gateway({ gw }) {
 
                 {gw.role === 'observer' && (
                   <div className="role-info">👀 Guests can view and comment on projects. You can upgrade later by contacting an admin.</div>
+                )}
+
+                {gw.role === 'admin' && (
+                  <Field
+                    label="Admin Setup Key"
+                    type="password"
+                    value={reg.adminSetupKey}
+                    onChange={(e) => setReg({ ...reg, adminSetupKey: e.target.value })}
+                  />
                 )}
 
                 {error && <div className="auth-error">{error}</div>}

@@ -34,3 +34,5 @@ services:
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
+      - key: ADMIN_SETUP_KEY
+        sync: false

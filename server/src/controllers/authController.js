@@ -74,10 +74,20 @@ export const register = asyncHandler(async (req, res) => {
   const { name, email, password, role = 'student', dept = '', set = '' } = req.body;
   const matric = String(req.body.matric || '').trim().toUpperCase();
   const title = String(req.body.title || '').trim();
+  const adminSetupKey = String(req.body.adminSetupKey || '');
 
   if (!name?.trim() || !email?.trim() || !password?.trim()) {
     res.status(400);
     throw new Error('Please fill in all required fields');
+  }
+  // Admin is never publicly self-serve. Registration only succeeds with the
+  // exact ADMIN_SETUP_KEY configured server-side (Render dashboard) — if it
+  // isn't set at all, admin registration is closed entirely, even with a key.
+  if (role === 'admin') {
+    if (!process.env.ADMIN_SETUP_KEY || adminSetupKey !== process.env.ADMIN_SETUP_KEY) {
+      res.status(403);
+      throw new Error('Invalid or missing admin setup key');
+    }
   }
   if (!isValidEmail(email)) {
     res.status(400);
