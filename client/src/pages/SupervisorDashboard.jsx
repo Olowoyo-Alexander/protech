@@ -43,6 +43,19 @@ export default function SupervisorDashboard() {
   if (!d) return <div className="spinner" />;
   const t = d.totals;
 
+  // The full supervised-projects list is already in memory, so both charts'
+  // drill-downs can be built client-side with no extra request.
+  const asPopItem = (p) => ({ _id: p._id, title: p.title, sub: `${p.set} · ${p.status}` });
+  const statusChartData = d.statusBreakdown.map((row) => ({
+    ...row,
+    projects: d.supervisedProjects.filter((p) => p.status === row.name.toLowerCase()).map(asPopItem),
+  }));
+  const setChartData = d.bySet.map((row) => ({
+    name: row.name,
+    value: row.count,
+    projects: d.supervisedProjects.filter((p) => p.set === row.name).map(asPopItem),
+  }));
+
   return (
     <>
       <div className="dash-head">
@@ -145,12 +158,12 @@ export default function SupervisorDashboard() {
         <div>
           <div className="section-card">
             <div className="section-title">Project Status</div>
-            <BarGraph data={d.statusBreakdown} xKey="name" series={[{ key: 'value', label: 'Projects' }]} height={190} />
+            <BarGraph data={statusChartData} xKey="name" series={[{ key: 'value', label: 'Projects' }]} height={190} onOpenProject={openProject} />
           </div>
 
           <div className="section-card">
             <div className="section-title">Projects by Set</div>
-            <BarGraph data={d.bySet.map((x) => ({ name: x.name, value: x.count }))} xKey="name" series={[{ key: 'value', label: 'Projects' }]} height={190} />
+            <BarGraph data={setChartData} xKey="name" series={[{ key: 'value', label: 'Projects' }]} height={190} onOpenProject={openProject} />
           </div>
 
           <div className="section-card">

@@ -119,11 +119,12 @@ export const getAnalytics = asyncHandler(async (req, res) => {
   start.setHours(0, 0, 0, 0);
   const trendDocs = await Project.find(
     { createdAt: { $gte: start } },
-    'createdAt likes comments bookmarks ratings spotlight authors'
+    'title createdAt likes comments bookmarks ratings spotlight authors'
   )
     .populate('authors', 'level')
     .lean();
   const trendMap = {}; // "y-m" -> { level -> totalEngagement }
+  const trendProjects = {}; // "y-m" -> { level -> [{_id,title,sub}] } — click-through
   for (const d of trendDocs) {
     const level = levelOf(d.authors);
     if (!level) continue; // engagement without an involved level isn't attributed
@@ -136,14 +137,19 @@ export const getAnalytics = asyncHandler(async (req, res) => {
       (d.ratings || []).length +
       (d.spotlight && d.spotlight.recommended ? 1 : 0);
     ((trendMap[key] ||= {})[level] = (trendMap[key][level] || 0) + eng);
+    const list = ((trendProjects[key] ||= {})[level] ||= []);
+    if (list.length < 20) list.push({ _id: d._id, title: d.title, sub: `${eng} engagement` });
   }
   // Walk a continuous 6-month axis; fill every level (0 when absent).
   const engagementTrend = [];
   const cursor = new Date(start);
   for (let i = 0; i < 6; i++) {
     const key = `${cursor.getFullYear()}-${cursor.getMonth() + 1}`;
-    const row = { month: MONTHS[cursor.getMonth()] };
-    for (const l of levelKeys) row[l] = (trendMap[key] && trendMap[key][l]) || 0;
+    const row = { month: MONTHS[cursor.getMonth()], projects: {} };
+    for (const l of levelKeys) {
+      row[l] = (trendMap[key] && trendMap[key][l]) || 0;
+      row.projects[l] = (trendProjects[key] && trendProjects[key][l]) || [];
+    }
     engagementTrend.push(row);
     cursor.setMonth(cursor.getMonth() + 1);
   }

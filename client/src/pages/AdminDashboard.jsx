@@ -31,7 +31,23 @@ export default function AdminDashboard() {
     totalProjects: { kind: 'projects', title: 'All Projects', filter: () => true },
     pending: { kind: 'projects', title: 'Pending Review', filter: (p) => p.status === 'pending' },
     approved: { kind: 'projects', title: 'Approved Projects', filter: (p) => p.status === 'approved' },
+    rejected: { kind: 'projects', title: 'Rejected Projects', filter: (p) => p.status === 'rejected' },
     groups: { kind: 'groups', title: 'Groups', filter: () => true },
+  };
+
+  // Maps a bar's label on the "Users by Role" / "Project Status" charts to the
+  // matching CFG key, so clicking a bar reuses the exact same stat-tile toggle
+  // panel above rather than a separate popover.
+  const ROLE_BAR_TO_KEY = { Students: 'students', Supervisors: 'supervisors', Guests: 'observers', Admins: 'admins' };
+  const STATUS_BAR_TO_KEY = { Approved: 'approved', Pending: 'pending', Rejected: 'rejected' };
+  const selectFromChart = (map) => (row) => {
+    const key = map[row.name];
+    if (!key) return;
+    toggle(key);
+    // Wait a frame for the toggled panel to actually mount before scrolling to it.
+    requestAnimationFrame(() => {
+      document.querySelector('.stat-detail')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
   };
 
   const toggle = async (key) => {
@@ -154,28 +170,35 @@ export default function AdminDashboard() {
       <div className="chart-grid">
         <div className="chart-card">
           <div className="chart-title">Users by Role</div>
-          <BarGraph data={d.usersByRole} xKey="name" series={[{ key: 'value', label: 'Users' }]} height={220} />
+          <BarGraph data={d.usersByRole} xKey="name" series={[{ key: 'value', label: 'Users' }]} height={220} onBarSelect={selectFromChart(ROLE_BAR_TO_KEY)} />
         </div>
 
         <div className="chart-card">
           <div className="chart-title">Project Status</div>
-          <BarGraph data={d.statusBreakdown} xKey="name" series={[{ key: 'value', label: 'Projects' }]} height={220} />
+          <BarGraph data={d.statusBreakdown} xKey="name" series={[{ key: 'value', label: 'Projects' }]} height={220} onBarSelect={selectFromChart(STATUS_BAR_TO_KEY)} />
         </div>
 
         <div className="chart-card">
           <div className="chart-title">Projects by Department</div>
           <BarGraph
-            data={d.byDept.map((x) => ({ name: x.name, value: x.count }))}
+            data={d.byDept.map((x) => ({ name: x.name, value: x.count, projects: x.projects }))}
             xKey="name"
             series={[{ key: 'value', label: 'Projects' }]}
             labelFormatter={deptAbbr}
             height={220}
+            onOpenProject={openProject}
           />
         </div>
 
         <div className="chart-card">
           <div className="chart-title">Projects Created (last 6 months)</div>
-          <BarGraph data={d.growth.map((x) => ({ name: x.name, value: x.count }))} xKey="name" series={[{ key: 'value', label: 'Projects' }]} height={220} />
+          <BarGraph
+            data={d.growth.map((x) => ({ name: x.name, value: x.count, projects: x.projects }))}
+            xKey="name"
+            series={[{ key: 'value', label: 'Projects' }]}
+            height={220}
+            onOpenProject={openProject}
+          />
         </div>
       </div>
 

@@ -211,10 +211,22 @@ export const overview = asyncHandler(async (req, res) => {
 
   const groups = await Group.countDocuments();
 
-  const byDept = await Project.aggregate([
-    { $group: { _id: '$dept', count: { $sum: 1 } } },
-    { $sort: { count: -1 } },
-  ]);
+  // A single lean fetch backs both the department and growth breakdowns below,
+  // each capped at 40 sample projects per bucket so a chart bar's click-through
+  // popover (see BarGraph.jsx) has something to show without over-fetching.
+  const allProjects = await Project.find({}, 'title dept status createdAt').lean();
+  const popItem = (p) => ({ _id: p._id, title: p.title, sub: p.status });
+
+  const byDeptMap = {};
+  for (const p of allProjects) {
+    const dept = p.dept || 'Unknown';
+    (byDeptMap[dept] ||= { count: 0, projects: [] });
+    byDeptMap[dept].count += 1;
+    if (byDeptMap[dept].projects.length < 40) byDeptMap[dept].projects.push(popItem(p));
+  }
+  const byDept = Object.entries(byDeptMap)
+    .map(([name, v]) => ({ name, count: v.count, projects: v.projects }))
+    .sort((a, b) => b.count - a.count);
 
   const usersByRole = [
     { name: 'Students', value: students },
@@ -227,18 +239,19 @@ export const overview = asyncHandler(async (req, res) => {
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
   sixMonthsAgo.setDate(1);
-  const growthRaw = await Project.aggregate([
-    { $match: { createdAt: { $gte: sixMonthsAgo } } },
-    {
-      $group: {
-        _id: { y: { $year: '$createdAt' }, m: { $month: '$createdAt' } },
-        count: { $sum: 1 },
-      },
-    },
-    { $sort: { '_id.y': 1, '_id.m': 1 } },
-  ]);
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const growth = growthRaw.map((g) => ({ name: MONTHS[g._id.m - 1], count: g.count }));
+  const growthMap = {};
+  for (const p of allProjects) {
+    const dt = new Date(p.createdAt);
+    if (dt < sixMonthsAgo) continue;
+    const key = `${dt.getFullYear()}-${dt.getMonth()}`;
+    (growthMap[key] ||= { month: dt.getMonth(), year: dt.getFullYear(), count: 0, projects: [] });
+    growthMap[key].count += 1;
+    if (growthMap[key].projects.length < 40) growthMap[key].projects.push(popItem(p));
+  }
+  const growth = Object.values(growthMap)
+    .sort((a, b) => a.year - b.year || a.month - b.month)
+    .map((g) => ({ name: MONTHS[g.month], count: g.count, projects: g.projects }));
 
   const engagement = await Project.aggregate([
     {
@@ -269,7 +282,7 @@ export const overview = asyncHandler(async (req, res) => {
       groups,
     },
     usersByRole,
-    byDept: byDept.map((d) => ({ name: d._id, count: d.count })),
+    byDept,
     statusBreakdown: [
       { name: 'Approved', value: approved },
       { name: 'Pending', value: pending },

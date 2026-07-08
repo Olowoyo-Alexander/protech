@@ -51,9 +51,12 @@ function TopValue({ x, y, width, value }) {
  *                use 'total' for stacked totals)
  *  labelFormatter(name) → compact x-axis label (e.g. department short form)
  *  onOpenProject(id)    → makes bars clickable, popping the projects behind a bar
+ *  onBarSelect(row)     → alternative to onOpenProject for bars whose "result" isn't
+ *                         a list of projects (e.g. a role or status breakdown) — the
+ *                         full data row is handed to the caller directly, no popover
  */
 export default function BarGraph({
-  data = [], xKey, series, height = 240, badgeKey, labelFormatter, onOpenProject,
+  data = [], xKey, series, height = 240, badgeKey, labelFormatter, onOpenProject, onBarSelect,
 }) {
   const stacked = series.length > 1;
   const wrapRef = useRef(null);
@@ -81,11 +84,13 @@ export default function BarGraph({
   if (!data.length) return <div className="chart-empty" style={{ height }}>No data yet.</div>;
 
   const topKey = badgeKey || series[series.length - 1].key;
-  const clickable = typeof onOpenProject === 'function';
+  const selectable = typeof onBarSelect === 'function';
+  const clickable = typeof onOpenProject === 'function' || selectable;
 
   const onBarClick = (entry) => {
     if (!clickable) return;
     const row = entry?.payload || {};
+    if (selectable) { onBarSelect(row); return; }
     const projects = row.projects || [];
     if (!projects.length) { setActive(null); return; }
     const w = wrapRef.current?.clientWidth || 320;

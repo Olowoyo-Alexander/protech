@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../api/client.js';
 import { useUI } from '../context/UIContext.jsx';
@@ -34,6 +34,20 @@ export default function Analytics() {
     const id = requestAnimationFrame(() => setLineKey((k) => k + 1));
     return () => cancelAnimationFrame(id);
   }, [trendLen]);
+
+  // Click-through popover for the trend line's dots — same idiom as BarGraph's
+  // bar popover (reuses its .tbar-pop styling), since a point here represents a
+  // month+level bucket of projects rather than a single project.
+  const trendWrapRef = useRef(null);
+  const [activePoint, setActivePoint] = useState(null); // { left, name, projects }
+  useEffect(() => {
+    if (!activePoint) return undefined;
+    const onDown = (e) => {
+      if (trendWrapRef.current && !trendWrapRef.current.contains(e.target)) setActivePoint(null);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [activePoint]);
 
   if (!data) return <div className="spinner" />;
 
@@ -100,30 +114,74 @@ export default function Analytics() {
           {engagementTrend.length === 0 || levelKeys.length === 0 ? (
             <div className="chart-empty">No data yet.</div>
           ) : (
-            <ResponsiveContainer width="100%" height={240}>
-              <LineChart key={lineKey} data={engagementTrend} margin={{ top: 8, right: 12, left: -12, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="month" tick={axisTick} tickLine={false} axisLine={{ stroke: 'var(--border)' }} />
-                <YAxis allowDecimals={false} tick={axisTick} width={30} tickLine={false} axisLine={false} />
-                <Tooltip contentStyle={tooltipStyle} />
-                {levelKeys.map((l, i) => (
-                  <Line
-                    key={l}
-                    type="monotone"
-                    dataKey={l}
-                    name={l}
-                    stroke={CHART_COLORS[i % CHART_COLORS.length]}
-                    strokeWidth={2}
-                    dot={false}
-                    activeDot={{ r: 4 }}
-                    isAnimationActive
-                    animationBegin={i * 150}
-                    animationDuration={800}
-                    animationEasing="ease-out"
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
+            <div className="bg-wrap" ref={trendWrapRef} style={{ position: 'relative' }}>
+              <ResponsiveContainer width="100%" height={240}>
+                <LineChart key={lineKey} data={engagementTrend} margin={{ top: 8, right: 12, left: -12, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="month" tick={axisTick} tickLine={false} axisLine={{ stroke: 'var(--border)' }} />
+                  <YAxis allowDecimals={false} tick={axisTick} width={30} tickLine={false} axisLine={false} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  {levelKeys.map((l, i) => {
+                    const color = CHART_COLORS[i % CHART_COLORS.length];
+                    const onDotClick = (props) => {
+                      const row = props?.payload;
+                      const projects = row?.projects?.[l] || [];
+                      if (!projects.length) { setActivePoint(null); return; }
+                      const w = trendWrapRef.current?.clientWidth || 320;
+                      const popW = 232;
+                      const left = Math.max(6, Math.min((props.cx || 0) - popW / 2, w - popW - 6));
+                      setActivePoint({ left, name: `${row.month} · ${l}`, projects });
+                    };
+                    return (
+                      <Line
+                        key={l}
+                        type="monotone"
+                        dataKey={l}
+                        name={l}
+                        stroke={color}
+                        strokeWidth={2}
+                        dot={(props) => (
+                          <circle
+                            key={`dot-${l}-${props.index}`}
+                            cx={props.cx}
+                            cy={props.cy}
+                            r={4}
+                            fill={color}
+                            stroke="var(--white)"
+                            strokeWidth={1.5}
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => onDotClick(props)}
+                          />
+                        )}
+                        activeDot={{ r: 6, style: { cursor: 'pointer' }, onClick: onDotClick }}
+                        isAnimationActive
+                        animationBegin={i * 150}
+                        animationDuration={800}
+                        animationEasing="ease-out"
+                      />
+                    );
+                  })}
+                </LineChart>
+              </ResponsiveContainer>
+
+              {activePoint && (
+                <div className="tbar-pop" style={{ position: 'absolute', top: 6, left: activePoint.left, width: 232 }} onClick={(e) => e.stopPropagation()}>
+                  <div className="tbar-pop-hd">
+                    <span className="tbar-pop-name" title={activePoint.name}>{activePoint.name}</span>
+                    <span className="tbar-pop-count">{activePoint.projects.length}</span>
+                    <button className="tbar-pop-x" onClick={() => setActivePoint(null)} aria-label="Close">✕</button>
+                  </div>
+                  <div className="tbar-pop-list">
+                    {activePoint.projects.map((pr) => (
+                      <button key={pr._id} className="tbar-pop-item" onClick={() => { setActivePoint(null); openProject(pr._id); }}>
+                        <span className="tbar-pop-title">{pr.title}</span>
+                        {pr.sub && <span className="tbar-pop-sub">{pr.sub}</span>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
