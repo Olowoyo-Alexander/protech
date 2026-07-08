@@ -30,6 +30,10 @@ const publicUser = (u) => ({
 
 const genCode = () => String(Math.floor(100000 + Math.random() * 900000));
 
+// Hard ceiling on admin accounts — a platform this size never needs more,
+// and it limits the blast radius if the setup key ever leaks.
+const MAX_ADMIN_ACCOUNTS = 3;
+
 // Standard email format check (mirrors the client-side validator). The domain
 // must include at least one dot, so "foo@bar" is rejected.
 const EMAIL_RE =
@@ -87,6 +91,12 @@ export const register = asyncHandler(async (req, res) => {
     if (!process.env.ADMIN_SETUP_KEY || adminSetupKey !== process.env.ADMIN_SETUP_KEY) {
       res.status(403);
       throw new Error('Invalid or missing admin setup key');
+    }
+    // Soft-deleted admins don't count — they no longer function as admins.
+    const adminCount = await User.countDocuments({ role: 'admin', deleted: { $ne: true } });
+    if (adminCount >= MAX_ADMIN_ACCOUNTS) {
+      res.status(403);
+      throw new Error(`Admin account limit reached (max ${MAX_ADMIN_ACCOUNTS})`);
     }
   }
   if (!isValidEmail(email)) {
