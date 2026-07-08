@@ -136,7 +136,7 @@ export const register = asyncHandler(async (req, res) => {
     devCode: result.delivered ? undefined : code, // surfaced in dev only
     message: result.delivered
       ? 'Verification code sent to your email.'
-      : 'SMTP not configured — code returned for dev testing.',
+      : 'Email not configured — code returned for dev testing.',
   });
 });
 

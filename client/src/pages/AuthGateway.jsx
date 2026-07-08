@@ -88,7 +88,22 @@ function Gateway({ gw }) {
       // Success → leave the login form and enter the app.
       navigate('/', { replace: true });
     } catch (e) {
-      setError(e.message);
+      // An unverified account has no way back to the code-entry screen once
+      // this login attempt fails — auto-resend and drop them into it instead
+      // of dead-ending on a plain error (resend needs a real email; a student
+      // who logged in with their matric number can't be auto-resent to).
+      if (e.message === 'Please verify your email before signing in' && loginEmailValid) {
+        try {
+          const res = await resend(login_.email);
+          setPendingEmail(login_.email);
+          setStage('verify');
+          setInfo(res.devCode ? `Dev mode — your code is ${res.devCode}` : res.message);
+        } catch (resendErr) {
+          setError(resendErr.message);
+        }
+      } else {
+        setError(e.message);
+      }
     } finally {
       setBusy(false);
     }
