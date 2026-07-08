@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import api from '../api/client.js';
 import { useUI } from '../context/UIContext.jsx';
-import { DEPTS, tierEmoji } from '../utils.js';
+import { useSettings } from '../context/SettingsContext.jsx';
+import { tierEmoji } from '../utils.js';
 
 export default function Leaderboard() {
   const { openProject, refreshKey } = useUI();
+  const { departments: DEPTS } = useSettings();
   const [projects, setProjects] = useState([]);
   const [dept, setDept] = useState('All');
   const [loading, setLoading] = useState(true);

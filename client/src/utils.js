@@ -66,38 +66,6 @@ export const DEPTS = [
   'Sciences',
 ];
 
-// Department list shown specifically on the Student registration page.
-export const STUDENT_DEPTS = [
-  'Civil Engineering',
-  'Electrical/Electronics Engineering',
-  'Mechanical Engineering',
-  'Physics',
-  'Mathematics',
-  'Chemical Engineering',
-  'Petroleum Engineering',
-  'Nursing',
-  'Statistics',
-  'Geology',
-  'Geophysics',
-  'Agriculture',
-  'Public Health',
-  'Computer Science',
-  'Zoology',
-  'Food Science and Technology',
-  'Fisheries and Aquaculture Technology',
-  'Accounting',
-  'Business Management',
-  'Economics',
-  'Public Administration',
-  'Project Management',
-  'Cyber security',
-  'Biochemistry',
-  'Industrial Chemistry',
-  'Botany',
-  'Microbiology',
-  'Applied Geology',
-];
-
 export const SETS = ['2020/2021', '2021/2022', '2022/2023', '2023/2024', '2024/2025'];
 
 // Academic levels (students).

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { STUDENT_DEPTS, SETS, isValidEmail, suggestEmail, isValidMatric, passwordStrength } from '../utils.js';
+import { useSettings } from '../context/SettingsContext.jsx';
+import { SETS, ROLE_GATEWAYS, isValidEmail, suggestEmail, isValidMatric, passwordStrength } from '../utils.js';
 
 // A dedicated, role-locked sign-in / registration page. The gateway config is
 // passed in by the router (one static route per unique URL). Every form here is
@@ -17,6 +18,7 @@ export default function AuthGateway({ gateway }) {
 
 function Gateway({ gw }) {
   const { login, register, verify, resend } = useAuth();
+  const { departments: STUDENT_DEPTS } = useSettings();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [tab, setTab] = useState(searchParams.get('tab') === 'register' ? 'register' : 'login');
@@ -333,9 +335,14 @@ function Gateway({ gw }) {
               </>
             )}
 
-            <div className="demo-hint" style={{ marginTop: '1rem' }}>
-              Not you? <Link to="/access-denied">Choose a different role</Link>
-            </div>
+            {/* Guest has no "different role" link. Student/Supervisor only ever
+                cross to Guest, never to each other — no path from a student
+                link to the supervisor gateway or vice versa. */}
+            {gw.role !== 'observer' && (
+              <div className="demo-hint" style={{ marginTop: '1rem' }}>
+                Not you? <Link to={`/${ROLE_GATEWAYS.guest.slug}`}>Continue as Guest instead</Link>
+              </div>
+            )}
           </>
         )}
       </div>

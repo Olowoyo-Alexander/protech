@@ -1400,9 +1400,10 @@ body.no-scroll{overflow:hidden}
 
 /* --- Project documentation inline viewer -------------------------------- */
 .doc-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.doc-actions{display:inline-flex;gap:14px}
-.doc-actions a{color:var(--blue);font-size:12px;font-weight:500;text-decoration:none;white-space:nowrap}
-.doc-actions a:hover{text-decoration:underline}
+.doc-actions{display:inline-flex;gap:6px}
+.doc-actions a{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;
+  border-radius:6px;color:var(--blue);font-size:15px;text-decoration:none}
+.doc-actions a:hover{background:var(--surface)}
 .doc-viewer{width:100%;height:480px;margin-top:8px;border:1px solid var(--border);
   border-radius:8px;background:var(--white)}
 .doc-fallback{font-size:13px;margin-top:6px}

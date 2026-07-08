@@ -321,8 +321,8 @@ export default function ProjectModal({ id }) {
                 <span>Documentation</span>
                 {p.docUrl && (
                   <span className="doc-actions">
-                    <a href={p.docUrl} target="_blank" rel="noreferrer">↗ Open in new tab</a>
-                    <a href={p.docUrl.replace('/upload/', '/upload/fl_attachment/')}>⬇ Download</a>
+                    <a href={p.docUrl} target="_blank" rel="noreferrer" title="Open in new tab" aria-label="Open in new tab">↗</a>
+                    <a href={p.docUrl.replace('/upload/', '/upload/fl_attachment/')} title="Download" aria-label="Download">⬇</a>
                   </span>
                 )}
               </div>

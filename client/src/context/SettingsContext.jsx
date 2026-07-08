@@ -1,13 +1,11 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import api from '../api/client.js';
-import { useAuth } from './AuthContext.jsx';
 import { DEPTS, SETS } from '../utils.js';
 
 const SettingsContext = createContext(null);
 export const useSettings = () => useContext(SettingsContext);
 
 export function SettingsProvider({ children }) {
-  const { user } = useAuth();
   // Default to the built-in constants until the live taxonomy loads.
   const [departments, setDepartments] = useState(DEPTS);
   const [sets, setSets] = useState(SETS);
@@ -24,9 +22,12 @@ export function SettingsProvider({ children }) {
     }
   }, []);
 
+  // Public endpoint — load for every visitor, including logged-out ones (the
+  // registration forms need the live department list too), not just once a
+  // user is signed in.
   useEffect(() => {
-    if (user) load();
-  }, [user, load]);
+    load();
+  }, [load]);
 
   // A department's short form, or '' if none.
   const deptShort = useCallback((name) => deptShorts[name] || '', [deptShorts]);
