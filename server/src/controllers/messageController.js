@@ -5,8 +5,10 @@ import { emitToUser } from '../socket/index.js';
 import { notify } from '../utils/notify.js';
 
 // Reply-quote preview fields — just enough to render "replying to X: <snippet>"
-// without a second round trip.
-const REPLY_POP = { path: 'replyTo', select: 'from text deleted', populate: { path: 'from', select: 'name' } };
+// without a second round trip. A deleted original is hard-removed (see
+// deleteMessage below), so populate simply returns null for it — no "deleted"
+// state ever needs to be represented or shown here.
+const REPLY_POP = { path: 'replyTo', select: 'from text', populate: { path: 'from', select: 'name' } };
 
 // GET /api/messages/:userId  — conversation with one user
 export const getThread = asyncHandler(async (req, res) => {
@@ -53,7 +55,9 @@ export const sendMessage = asyncHandler(async (req, res) => {
   res.status(201).json(msg);
 });
 
-// DELETE /api/messages/msg/:messageId  — soft-delete a message you sent.
+// DELETE /api/messages/msg/:messageId  — permanently delete a message you
+// sent. No trace is left for either side: the row is removed outright, not
+// flagged, so the recipient never sees any "message deleted" indicator.
 export const deleteMessage = asyncHandler(async (req, res) => {
   const msg = await Message.findById(req.params.messageId);
   if (!msg) {
@@ -64,13 +68,10 @@ export const deleteMessage = asyncHandler(async (req, res) => {
     res.status(403);
     throw new Error('You can only delete your own messages');
   }
-  msg.deleted = true;
-  msg.text = '';
-  await msg.save();
-  const updated = await Message.findById(msg._id).populate(REPLY_POP);
+  await Message.deleteOne({ _id: msg._id });
 
-  emitToUser(msg.to, 'messageDeleted', updated);
-  res.json(updated);
+  emitToUser(msg.to, 'messageDeleted', { _id: msg._id, thread: msg.thread });
+  res.json({ _id: msg._id });
 });
 
 // GET /api/messages  — unread counts per thread (for badges)

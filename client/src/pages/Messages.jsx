@@ -130,10 +130,11 @@ export default function Messages() {
     });
   }, [subscribeMessages, selected, loadUsers, bumpUser]);
 
-  // Live delete: the other participant deleted a message they sent.
+  // Live delete: the other participant deleted a message they sent. It's
+  // removed outright — no "message deleted" trace is shown on either side.
   useEffect(() => {
     return subscribeMessageDeleted((m) => {
-      setMessages((prev) => prev.map((x) => (x._id === m._id ? m : x)));
+      setMessages((prev) => prev.filter((x) => x._id !== m._id));
     });
   }, [subscribeMessageDeleted]);
 
@@ -156,7 +157,7 @@ export default function Messages() {
   const deleteMsg = async (m) => {
     if (!(await confirm({ title: 'Delete message?', message: 'This will delete the message for everyone.', confirmText: 'Delete', danger: true }))) return;
     const { data } = await api.delete(`/messages/msg/${m._id}`);
-    setMessages((prev) => prev.map((x) => (x._id === data._id ? data : x)));
+    setMessages((prev) => prev.filter((x) => x._id !== data._id));
     if (replyingTo?._id === data._id) setReplyingTo(null);
   };
 
@@ -294,29 +295,23 @@ export default function Messages() {
                       ref={(node) => { if (node) msgNodeRefs.current[m._id] = node; else delete msgNodeRefs.current[m._id]; }}
                       className={`dm-msg ${mine ? 'me' : 'them'}${highlightId === m._id ? ' flash' : ''}`}
                     >
-                      {!m.deleted && (
-                        <span className="msg-actions">
-                          <button className="msg-action" onClick={() => setReplyingTo(m)} title="Reply" aria-label="Reply">
-                            <i className="bi bi-reply-fill" />
+                      <span className="msg-actions">
+                        <button className="msg-action" onClick={() => setReplyingTo(m)} title="Reply" aria-label="Reply">
+                          <i className="bi bi-reply-fill" />
+                        </button>
+                        {mine && (
+                          <button className="msg-action" onClick={() => deleteMsg(m)} title="Delete" aria-label="Delete">
+                            <i className="bi bi-trash3" />
                           </button>
-                          {mine && (
-                            <button className="msg-action" onClick={() => deleteMsg(m)} title="Delete" aria-label="Delete">
-                              <i className="bi bi-trash3" />
-                            </button>
-                          )}
-                        </span>
-                      )}
+                        )}
+                      </span>
                       {m.replyTo && (
                         <div className="msg-reply-quote" onClick={() => scrollToMessage(m.replyTo._id)}>
-                          <div className="msg-reply-quote-from">{m.replyTo.deleted ? 'Deleted message' : (m.replyTo.from?._id === user._id ? 'You' : displayName(m.replyTo.from))}</div>
-                          {!m.replyTo.deleted && <div className="msg-reply-quote-text">{m.replyTo.text}</div>}
+                          <div className="msg-reply-quote-from">{m.replyTo.from?._id === user._id ? 'You' : displayName(m.replyTo.from)}</div>
+                          <div className="msg-reply-quote-text">{m.replyTo.text}</div>
                         </div>
                       )}
-                      {m.deleted ? (
-                        <span className="msg-deleted"><i className="bi bi-slash-circle" /> This message was deleted</span>
-                      ) : (
-                        m.text
-                      )}
+                      {m.text}
                       <div style={{ fontSize: 10, opacity: 0.6, marginTop: 3 }}>{timeAgo(m.createdAt)}</div>
                     </div>
                   );

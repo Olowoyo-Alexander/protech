@@ -85,12 +85,13 @@ export default function GroupView({ id, onChanged, onPatched, onBack, onActivity
     });
   }, [isMemberView, id, subscribeGroupMessages]);
 
-  // Live delete: another member (or an admin) deleted a chat message.
+  // Live delete: another member (or an admin) deleted a chat message. It's
+  // removed outright — no "message deleted" trace is shown to anyone.
   useEffect(() => {
     if (!isMemberView || !subscribeGroupMessageDeleted) return;
-    return subscribeGroupMessageDeleted(({ groupId, message, unpinned }) => {
+    return subscribeGroupMessageDeleted(({ groupId, messageId, unpinned }) => {
       if (String(groupId) !== String(id)) return;
-      setChatMsgs((prev) => prev.map((x) => (x._id === message._id ? message : x)));
+      setChatMsgs((prev) => prev.filter((x) => x._id !== messageId));
       if (unpinned) setGroup((g) => (g ? { ...g, pinnedMessage: null } : g));
     });
   }, [isMemberView, id, subscribeGroupMessageDeleted]);
@@ -260,9 +261,9 @@ export default function GroupView({ id, onChanged, onPatched, onBack, onActivity
     if (!(await confirm({ title: 'Delete message?', message: 'This will delete the message for everyone in the group.', confirmText: 'Delete', danger: true }))) return;
     try {
       const { data } = await api.delete(`/groups/${id}/messages/${m._id}`);
-      setChatMsgs((prev) => prev.map((x) => (x._id === data.message._id ? data.message : x)));
+      setChatMsgs((prev) => prev.filter((x) => x._id !== data._id));
       if (data.unpinned) setGroup((g) => (g ? { ...g, pinnedMessage: null } : g));
-      if (replyingTo?._id === data.message._id) setReplyingTo(null);
+      if (replyingTo?._id === data._id) setReplyingTo(null);
     } catch (e) {
       setError(e.message);
     }
@@ -338,7 +339,7 @@ export default function GroupView({ id, onChanged, onPatched, onBack, onActivity
               chatMsgs.map((m) => {
                 const mine = m.from?._id === user._id;
                 const isPinned = pinnedId === String(m._id);
-                const canDelete = !m.deleted && (mine || isAdmin);
+                const canDelete = mine || isAdmin;
                 return (
                   <div
                     key={m._id}
@@ -346,41 +347,35 @@ export default function GroupView({ id, onChanged, onPatched, onBack, onActivity
                     className={`dm-msg ${mine ? 'me' : 'them'}${isPinned ? ' pinned' : ''}${highlightId === m._id ? ' flash' : ''}`}
                     style={mine ? { background: theme.dot } : undefined}
                   >
-                    {!m.deleted && (
-                      <span className="msg-actions">
-                        <button className="msg-action" onClick={() => setReplyingTo(m)} title="Reply" aria-label="Reply">
-                          <i className="bi bi-reply-fill" />
+                    <span className="msg-actions">
+                      <button className="msg-action" onClick={() => setReplyingTo(m)} title="Reply" aria-label="Reply">
+                        <i className="bi bi-reply-fill" />
+                      </button>
+                      {canDelete && (
+                        <button className="msg-action" onClick={() => deleteChatMsg(m)} title="Delete" aria-label="Delete">
+                          <i className="bi bi-trash3" />
                         </button>
-                        {canDelete && (
-                          <button className="msg-action" onClick={() => deleteChatMsg(m)} title="Delete" aria-label="Delete">
-                            <i className="bi bi-trash3" />
-                          </button>
-                        )}
-                        {isAdmin && (
-                          <button
-                            className="msg-action"
-                            onClick={() => pinMessage(isPinned ? null : m._id)}
-                            disabled={busy}
-                            title={isPinned ? 'Unpin message' : 'Pin message'}
-                            aria-label={isPinned ? 'Unpin message' : 'Pin message'}
-                          >
-                            <i className={isPinned ? 'bi bi-pin-angle-fill' : 'bi bi-pin-angle'} />
-                          </button>
-                        )}
-                      </span>
-                    )}
-                    {!mine && !m.deleted && <div className="grp-author">{displayName(m.from)}</div>}
+                      )}
+                      {isAdmin && (
+                        <button
+                          className="msg-action"
+                          onClick={() => pinMessage(isPinned ? null : m._id)}
+                          disabled={busy}
+                          title={isPinned ? 'Unpin message' : 'Pin message'}
+                          aria-label={isPinned ? 'Unpin message' : 'Pin message'}
+                        >
+                          <i className={isPinned ? 'bi bi-pin-angle-fill' : 'bi bi-pin-angle'} />
+                        </button>
+                      )}
+                    </span>
+                    {!mine && <div className="grp-author">{displayName(m.from)}</div>}
                     {m.replyTo && (
                       <div className="msg-reply-quote" onClick={() => scrollToMessage(m.replyTo._id)}>
-                        <div className="msg-reply-quote-from">{m.replyTo.deleted ? 'Deleted message' : (m.replyTo.from?._id === user._id ? 'You' : displayName(m.replyTo.from))}</div>
-                        {!m.replyTo.deleted && <div className="msg-reply-quote-text">{m.replyTo.text}</div>}
+                        <div className="msg-reply-quote-from">{m.replyTo.from?._id === user._id ? 'You' : displayName(m.replyTo.from)}</div>
+                        <div className="msg-reply-quote-text">{m.replyTo.text}</div>
                       </div>
                     )}
-                    {m.deleted ? (
-                      <span className="msg-deleted"><i className="bi bi-slash-circle" /> This message was deleted</span>
-                    ) : (
-                      m.text
-                    )}
+                    {m.text}
                     <div style={{ fontSize: 10, opacity: 0.65, marginTop: 3 }}>{timeAgo(m.createdAt)}</div>
                   </div>
                 );

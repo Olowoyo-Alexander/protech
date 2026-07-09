@@ -759,9 +759,6 @@ body.no-scroll{overflow:hidden}
 .msg-reply-quote-from{font-size:10.5px;font-weight:700}
 .msg-reply-quote-text{font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.85}
 
-/* Deleted-message placeholder */
-.msg-deleted{font-style:italic;opacity:.65;font-size:13px;display:inline-flex;align-items:center;gap:5px}
-
 /* Reply composer bar, shown above the input row while replying to a message —
    same visual language as .grp-pinned. */
 .msg-reply-composer{display:flex;align-items:center;gap:10px;padding:6px 12px;background:var(--surface);border-top:1px solid var(--border)}

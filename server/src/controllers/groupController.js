@@ -424,7 +424,7 @@ export const setGroupTheme = asyncHandler(async (req, res) => {
 });
 
 // Reply-quote preview fields — mirrors the DM convention in messageController.js.
-const REPLY_POP = { path: 'replyTo', select: 'from text deleted', populate: { path: 'from', select: 'name' } };
+const REPLY_POP = { path: 'replyTo', select: 'from text', populate: { path: 'from', select: 'name' } };
 
 // GET /api/groups/:id/messages  — group chat history (members only).
 export const listGroupMessages = asyncHandler(async (req, res) => {
@@ -493,9 +493,11 @@ export const sendGroupMessage = asyncHandler(async (req, res) => {
   res.status(201).json(populated);
 });
 
-// DELETE /api/groups/:id/messages/:messageId  — soft-delete a group chat
-// message. The sender, or a group admin (WhatsApp-style moderation), may
-// delete it. If it was the pinned message, it's unpinned too.
+// DELETE /api/groups/:id/messages/:messageId  — permanently delete a group
+// chat message. No trace is left for other members: the row is removed
+// outright, not flagged, so no one sees any "message deleted" indicator. The
+// sender, or a group admin (WhatsApp-style moderation), may delete it. If it
+// was the pinned message, it's unpinned too.
 export const deleteGroupMessage = asyncHandler(async (req, res) => {
   const g = await Group.findById(req.params.id);
   if (!g) {
@@ -512,22 +514,19 @@ export const deleteGroupMessage = asyncHandler(async (req, res) => {
     res.status(403);
     throw new Error('Only the sender or a group admin can delete this message');
   }
-  msg.deleted = true;
-  msg.text = '';
-  await msg.save();
   let unpinned = false;
   if (g.pinnedMessage && String(g.pinnedMessage) === String(msg._id)) {
     g.pinnedMessage = null;
     await g.save();
     unpinned = true;
   }
-  const updated = await GroupMessage.findById(msg._id).populate('from', 'name role avatarColor').populate(REPLY_POP);
+  await GroupMessage.deleteOne({ _id: msg._id });
 
   for (const m of g.members) {
     if (String(m) === String(req.user._id)) continue;
-    emitToUser(m, 'groupMessageDeleted', { groupId: String(g._id), message: updated, unpinned });
+    emitToUser(m, 'groupMessageDeleted', { groupId: String(g._id), messageId: String(msg._id), unpinned });
   }
-  res.json({ message: updated, unpinned });
+  res.json({ _id: msg._id, unpinned });
 });
 
 // PATCH /api/groups/:id/pin  { messageId }  — pin (or, with null, unpin) a chat
