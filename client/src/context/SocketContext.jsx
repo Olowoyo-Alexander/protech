@@ -14,6 +14,8 @@ export function SocketProvider({ children }) {
   const socketRef = useRef(null);
   const msgListeners = useRef(new Set());
   const groupMsgListeners = useRef(new Set());
+  const msgDeletedListeners = useRef(new Set());
+  const groupMsgDeletedListeners = useRef(new Set());
 
   const toast = useCallback((text) => {
     const id = Math.random().toString(36).slice(2);
@@ -60,6 +62,12 @@ export function SocketProvider({ children }) {
     socket.on('groupMessage', (payload) => {
       groupMsgListeners.current.forEach((fn) => fn(payload));
     });
+    socket.on('messageDeleted', (m) => {
+      msgDeletedListeners.current.forEach((fn) => fn(m));
+    });
+    socket.on('groupMessageDeleted', (payload) => {
+      groupMsgDeletedListeners.current.forEach((fn) => fn(payload));
+    });
 
     return () => socket.disconnect();
   }, [user, fetchNotifications, toast]);
@@ -73,6 +81,18 @@ export function SocketProvider({ children }) {
   const subscribeGroupMessages = useCallback((fn) => {
     groupMsgListeners.current.add(fn);
     return () => groupMsgListeners.current.delete(fn);
+  }, []);
+
+  // Live delete notifications — payload is the updated (now-deleted) message.
+  const subscribeMessageDeleted = useCallback((fn) => {
+    msgDeletedListeners.current.add(fn);
+    return () => msgDeletedListeners.current.delete(fn);
+  }, []);
+
+  // Live group-chat delete notifications: payload is { groupId, message, unpinned }.
+  const subscribeGroupMessageDeleted = useCallback((fn) => {
+    groupMsgDeletedListeners.current.add(fn);
+    return () => groupMsgDeletedListeners.current.delete(fn);
   }, []);
 
   const markRead = async (id) => {
@@ -108,6 +128,8 @@ export function SocketProvider({ children }) {
         toasts,
         subscribeMessages,
         subscribeGroupMessages,
+        subscribeMessageDeleted,
+        subscribeGroupMessageDeleted,
       }}
     >
       {children}

@@ -742,9 +742,38 @@ body.no-scroll{overflow:hidden}
 .grp-pinned-x:hover{background:var(--border);color:var(--text)}
 .dm-msg{position:relative}
 .dm-msg.pinned{box-shadow:0 0 0 2px var(--amber)}
-.grp-msg-pin{position:absolute;top:3px;right:3px;border:none;background:rgba(0,0,0,.2);color:#fff;width:20px;height:20px;border-radius:50%;cursor:pointer;font-size:10px;display:none;align-items:center;justify-content:center;line-height:1}
-.dm-msg:hover .grp-msg-pin{display:inline-flex}
 .chat-disabled-note{padding:.75rem;border-top:1px solid var(--border);font-size:12px;color:var(--textmuted);text-align:center}
+
+/* Per-message hover actions (reply / delete / pin) — a small cluster of round
+   icon buttons in the top-right corner of a bubble, revealed on hover. */
+.msg-actions{position:absolute;top:3px;right:3px;display:none;gap:3px}
+.dm-msg:hover .msg-actions{display:flex}
+.msg-action{border:none;background:rgba(0,0,0,.2);color:#fff;width:20px;height:20px;border-radius:50%;cursor:pointer;font-size:10px;display:inline-flex;align-items:center;justify-content:center;line-height:1;flex:0 0 auto}
+.msg-action:hover{background:rgba(0,0,0,.35)}
+
+/* Reply-quote preview, rendered above a message's own text when it replies to
+   another message. currentColor adapts the accent to the bubble's text colour
+   ("me" bubbles are tinted, "them" bubbles are dark-on-light). */
+.msg-reply-quote{border-left:3px solid currentColor;background:rgba(127,127,127,.15);border-radius:4px;padding:4px 8px;margin-bottom:5px;cursor:pointer;opacity:.9}
+.msg-reply-quote:hover{opacity:1}
+.msg-reply-quote-from{font-size:10.5px;font-weight:700}
+.msg-reply-quote-text{font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.85}
+
+/* Deleted-message placeholder */
+.msg-deleted{font-style:italic;opacity:.65;font-size:13px;display:inline-flex;align-items:center;gap:5px}
+
+/* Reply composer bar, shown above the input row while replying to a message —
+   same visual language as .grp-pinned. */
+.msg-reply-composer{display:flex;align-items:center;gap:10px;padding:6px 12px;background:var(--surface);border-top:1px solid var(--border)}
+.msg-reply-composer .msg-reply-quote-body{flex:1;min-width:0;border-left:3px solid var(--amber);padding-left:8px}
+.msg-reply-composer .msg-reply-quote-from{color:var(--text)}
+.msg-reply-composer .msg-reply-quote-text{color:var(--textmuted);opacity:1}
+.msg-reply-cancel{border:none;background:transparent;color:var(--textmuted);cursor:pointer;font-size:13px;flex:0 0 auto;width:24px;height:24px;border-radius:50%}
+.msg-reply-cancel:hover{background:var(--border);color:var(--text)}
+
+/* Brief highlight pulse when a quote-preview jumps the view to the original message. */
+@keyframes msgFlash{0%,100%{box-shadow:0 0 0 2px transparent}30%{box-shadow:0 0 0 2px var(--amber)}}
+.dm-msg.flash{animation:msgFlash 1.5s ease-out}
 
 /* WhatsApp-style action rows (add participant / new project) */
 .add-row{display:flex;align-items:center;gap:12px;padding:10px 6px;cursor:pointer;width:100%;background:none;border:none;text-align:left;border-radius:8px}

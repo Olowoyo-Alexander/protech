@@ -423,6 +423,9 @@ export const setGroupTheme = asyncHandler(async (req, res) => {
   res.json(serialize(await findPopulated(g._id), req.user));
 });
 
+// Reply-quote preview fields — mirrors the DM convention in messageController.js.
+const REPLY_POP = { path: 'replyTo', select: 'from text deleted', populate: { path: 'from', select: 'name' } };
+
 // GET /api/groups/:id/messages  — group chat history (members only).
 export const listGroupMessages = asyncHandler(async (req, res) => {
   const g = await Group.findById(req.params.id);
@@ -437,6 +440,7 @@ export const listGroupMessages = asyncHandler(async (req, res) => {
   await autoDisableExpiredChat(g);
   const messages = await GroupMessage.find({ group: g._id })
     .populate('from', 'name role avatarColor')
+    .populate(REPLY_POP)
     .sort('createdAt')
     .limit(200);
   // Opening the chat marks it read up to now (clears the unread badge).
@@ -448,7 +452,7 @@ export const listGroupMessages = asyncHandler(async (req, res) => {
   res.json({ chatEnabled: g.chatEnabled, messages });
 });
 
-// POST /api/groups/:id/messages  { text }  — post to group chat (members only).
+// POST /api/groups/:id/messages  { text, replyTo? }  — post to group chat (members only).
 export const sendGroupMessage = asyncHandler(async (req, res) => {
   const text = String(req.body.text || '').trim();
   if (!text) {
@@ -469,11 +473,17 @@ export const sendGroupMessage = asyncHandler(async (req, res) => {
     res.status(403);
     throw new Error('Group chat is disabled');
   }
-  const msg = await GroupMessage.create({ group: g._id, from: req.user._id, text });
+  let replyTo = null;
+  if (req.body.replyTo) {
+    // A reply must point at a message actually in this same group.
+    const original = await GroupMessage.findOne({ _id: req.body.replyTo, group: g._id });
+    if (original) replyTo = original._id;
+  }
+  const msg = await GroupMessage.create({ group: g._id, from: req.user._id, text, replyTo });
   // Bump the group's updatedAt so the freshest conversation sorts to the top of
   // everyone's group list (persists the reorder across reloads).
   await Group.updateOne({ _id: g._id }, { $currentDate: { updatedAt: true } });
-  const populated = await GroupMessage.findById(msg._id).populate('from', 'name role avatarColor');
+  const populated = await GroupMessage.findById(msg._id).populate('from', 'name role avatarColor').populate(REPLY_POP);
 
   // Push to every other member in real time.
   for (const m of g.members) {
@@ -481,6 +491,43 @@ export const sendGroupMessage = asyncHandler(async (req, res) => {
     emitToUser(m, 'groupMessage', { groupId: String(g._id), message: populated });
   }
   res.status(201).json(populated);
+});
+
+// DELETE /api/groups/:id/messages/:messageId  — soft-delete a group chat
+// message. The sender, or a group admin (WhatsApp-style moderation), may
+// delete it. If it was the pinned message, it's unpinned too.
+export const deleteGroupMessage = asyncHandler(async (req, res) => {
+  const g = await Group.findById(req.params.id);
+  if (!g) {
+    res.status(404);
+    throw new Error('Group not found');
+  }
+  const msg = await GroupMessage.findOne({ _id: req.params.messageId, group: g._id });
+  if (!msg) {
+    res.status(404);
+    throw new Error('Message not found');
+  }
+  const mine = String(msg.from) === String(req.user._id);
+  if (!mine && !isGroupAdmin(g, req.user)) {
+    res.status(403);
+    throw new Error('Only the sender or a group admin can delete this message');
+  }
+  msg.deleted = true;
+  msg.text = '';
+  await msg.save();
+  let unpinned = false;
+  if (g.pinnedMessage && String(g.pinnedMessage) === String(msg._id)) {
+    g.pinnedMessage = null;
+    await g.save();
+    unpinned = true;
+  }
+  const updated = await GroupMessage.findById(msg._id).populate('from', 'name role avatarColor').populate(REPLY_POP);
+
+  for (const m of g.members) {
+    if (String(m) === String(req.user._id)) continue;
+    emitToUser(m, 'groupMessageDeleted', { groupId: String(g._id), message: updated, unpinned });
+  }
+  res.json({ message: updated, unpinned });
 });
 
 // PATCH /api/groups/:id/pin  { messageId }  — pin (or, with null, unpin) a chat

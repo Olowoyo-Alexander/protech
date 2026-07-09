@@ -14,6 +14,7 @@ import {
   deleteGroup,
   listGroupMessages,
   sendGroupMessage,
+  deleteGroupMessage,
   pinMessage,
 } from '../controllers/groupController.js';
 import { createSnippet } from '../controllers/snippetController.js';
@@ -40,6 +41,7 @@ router.post('/:id/snippets', createSnippet);
 
 router.get('/:id/messages', listGroupMessages);
 router.post('/:id/messages', sendGroupMessage);
+router.delete('/:id/messages/:messageId', deleteGroupMessage);
 router.patch('/:id/pin', pinMessage);
 
 router.delete('/:id/members/:userId', removeMember);

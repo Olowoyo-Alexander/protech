@@ -2,12 +2,14 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import api from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useLive } from '../context/SocketContext.jsx';
+import { useConfirm } from '../context/ConfirmContext.jsx';
 import Avatar from '../components/Avatar.jsx';
 import { ROLE_LABELS, timeAgo, displayName } from '../utils.js';
 
 export default function Messages() {
   const { user } = useAuth();
-  const { online, subscribeMessages, fetchNotifications } = useLive();
+  const { online, subscribeMessages, subscribeMessageDeleted, fetchNotifications } = useLive();
+  const confirm = useConfirm();
   // Admins & supervisors browse the whole directory; everyone else only sees
   // their own conversations and adds new people by matric/name (WhatsApp-style).
   const privileged = user.role === 'admin' || user.role === 'supervisor';
@@ -18,7 +20,10 @@ export default function Messages() {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [infoOpen, setInfoOpen] = useState(false); // contact info panel (header click)
+  const [replyingTo, setReplyingTo] = useState(null); // message object being replied to
+  const [highlightId, setHighlightId] = useState(null); // briefly flashed after a quote-jump
   const msgsRef = useRef(null);
+  const msgNodeRefs = useRef({}); // messageId -> DOM node, for quote-jump scrolling
 
   // New-chat (contact lookup) state — only used by non-privileged users.
   const [newChat, setNewChat] = useState(false);
@@ -76,6 +81,7 @@ export default function Messages() {
     async (uid) => {
       setSelected(uid);
       setInfoOpen(false);
+      setReplyingTo(null);
       setUnread((u) => ({ ...u, [uid]: 0 }));
       const { data } = await api.get(`/messages/${uid}`);
       setMessages(data);
@@ -124,6 +130,13 @@ export default function Messages() {
     });
   }, [subscribeMessages, selected, loadUsers, bumpUser]);
 
+  // Live delete: the other participant deleted a message they sent.
+  useEffect(() => {
+    return subscribeMessageDeleted((m) => {
+      setMessages((prev) => prev.map((x) => (x._id === m._id ? m : x)));
+    });
+  }, [subscribeMessageDeleted]);
+
   // Auto-scroll to bottom
   useEffect(() => {
     if (msgsRef.current) msgsRef.current.scrollTop = msgsRef.current.scrollHeight;
@@ -133,9 +146,27 @@ export default function Messages() {
     const t = text.trim();
     if (!t || !selected) return;
     setText('');
-    const { data } = await api.post(`/messages/${selected}`, { text: t });
+    const replyTo = replyingTo?._id;
+    setReplyingTo(null);
+    const { data } = await api.post(`/messages/${selected}`, { text: t, replyTo });
     setMessages((prev) => [...prev, data]);
     bumpUser(selected); // my reply moves this chat to the top too
+  };
+
+  const deleteMsg = async (m) => {
+    if (!(await confirm({ title: 'Delete message?', message: 'This will delete the message for everyone.', confirmText: 'Delete', danger: true }))) return;
+    const { data } = await api.delete(`/messages/msg/${m._id}`);
+    setMessages((prev) => prev.map((x) => (x._id === data._id ? data : x)));
+    if (replyingTo?._id === data._id) setReplyingTo(null);
+  };
+
+  // Jump to (and briefly flash) the original message a quote-preview points at.
+  const scrollToMessage = (id) => {
+    const node = msgNodeRefs.current[id];
+    if (!node) return;
+    node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setHighlightId(id);
+    setTimeout(() => setHighlightId((h) => (h === id ? null : h)), 1500);
   };
 
   const other = users.find((u) => u._id === selected);
@@ -255,13 +286,51 @@ export default function Messages() {
                     Start a conversation...
                   </div>
                 )}
-                {messages.map((m) => (
-                  <div key={m._id} className={`dm-msg ${m.from === user._id ? 'me' : 'them'}`}>
-                    {m.text}
-                    <div style={{ fontSize: 10, opacity: 0.6, marginTop: 3 }}>{timeAgo(m.createdAt)}</div>
-                  </div>
-                ))}
+                {messages.map((m) => {
+                  const mine = m.from === user._id;
+                  return (
+                    <div
+                      key={m._id}
+                      ref={(node) => { if (node) msgNodeRefs.current[m._id] = node; else delete msgNodeRefs.current[m._id]; }}
+                      className={`dm-msg ${mine ? 'me' : 'them'}${highlightId === m._id ? ' flash' : ''}`}
+                    >
+                      {!m.deleted && (
+                        <span className="msg-actions">
+                          <button className="msg-action" onClick={() => setReplyingTo(m)} title="Reply" aria-label="Reply">
+                            <i className="bi bi-reply-fill" />
+                          </button>
+                          {mine && (
+                            <button className="msg-action" onClick={() => deleteMsg(m)} title="Delete" aria-label="Delete">
+                              <i className="bi bi-trash3" />
+                            </button>
+                          )}
+                        </span>
+                      )}
+                      {m.replyTo && (
+                        <div className="msg-reply-quote" onClick={() => scrollToMessage(m.replyTo._id)}>
+                          <div className="msg-reply-quote-from">{m.replyTo.deleted ? 'Deleted message' : (m.replyTo.from?._id === user._id ? 'You' : displayName(m.replyTo.from))}</div>
+                          {!m.replyTo.deleted && <div className="msg-reply-quote-text">{m.replyTo.text}</div>}
+                        </div>
+                      )}
+                      {m.deleted ? (
+                        <span className="msg-deleted"><i className="bi bi-slash-circle" /> This message was deleted</span>
+                      ) : (
+                        m.text
+                      )}
+                      <div style={{ fontSize: 10, opacity: 0.6, marginTop: 3 }}>{timeAgo(m.createdAt)}</div>
+                    </div>
+                  );
+                })}
               </div>
+              {replyingTo && (
+                <div className="msg-reply-composer">
+                  <div className="msg-reply-quote-body">
+                    <div className="msg-reply-quote-from">{replyingTo.from === user._id ? 'You' : displayName(other)}</div>
+                    <div className="msg-reply-quote-text">{replyingTo.text}</div>
+                  </div>
+                  <button className="msg-reply-cancel" onClick={() => setReplyingTo(null)} aria-label="Cancel reply">✕</button>
+                </div>
+              )}
               <div className="dm-input-row">
                 <input
                   placeholder="Type a message..."

@@ -12,7 +12,7 @@ import ColorPicker from './ColorPicker.jsx';
 // tab. Lives inside the Groups page's right pane.
 export default function GroupView({ id, onChanged, onPatched, onBack, onActivity }) {
   const { triggerRefresh, openNewForGroup, openProject, refreshKey } = useUI();
-  const { toast, subscribeGroupMessages } = useLive();
+  const { toast, subscribeGroupMessages, subscribeGroupMessageDeleted } = useLive();
   const { user } = useAuth();
   const confirm = useConfirm();
 
@@ -40,7 +40,10 @@ export default function GroupView({ id, onChanged, onPatched, onBack, onActivity
   const [grpProjects, setGrpProjects] = useState([]);
   const [chatMsgs, setChatMsgs] = useState([]);
   const [chatText, setChatText] = useState('');
+  const [replyingTo, setReplyingTo] = useState(null); // chat message being replied to
+  const [highlightId, setHighlightId] = useState(null); // briefly flashed after a quote-jump
   const chatRef = useRef(null);
+  const msgNodeRefs = useRef({}); // messageId -> DOM node, for quote-jump scrolling
 
   const load = useCallback(async () => {
     try {
@@ -54,6 +57,7 @@ export default function GroupView({ id, onChanged, onPatched, onBack, onActivity
   useEffect(() => {
     setInfoOpen(false);
     setGroup(null);
+    setReplyingTo(null);
     load();
   }, [load]);
 
@@ -80,6 +84,16 @@ export default function GroupView({ id, onChanged, onPatched, onBack, onActivity
       if (String(groupId) === String(id)) setChatMsgs((prev) => [...prev, message]);
     });
   }, [isMemberView, id, subscribeGroupMessages]);
+
+  // Live delete: another member (or an admin) deleted a chat message.
+  useEffect(() => {
+    if (!isMemberView || !subscribeGroupMessageDeleted) return;
+    return subscribeGroupMessageDeleted(({ groupId, message, unpinned }) => {
+      if (String(groupId) !== String(id)) return;
+      setChatMsgs((prev) => prev.map((x) => (x._id === message._id ? message : x)));
+      if (unpinned) setGroup((g) => (g ? { ...g, pinnedMessage: null } : g));
+    });
+  }, [isMemberView, id, subscribeGroupMessageDeleted]);
 
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
@@ -231,13 +245,36 @@ export default function GroupView({ id, onChanged, onPatched, onBack, onActivity
     const text = chatText.trim();
     if (!text) return;
     setChatText('');
+    const replyTo = replyingTo?._id;
+    setReplyingTo(null);
     try {
-      const { data } = await api.post(`/groups/${id}/messages`, { text });
+      const { data } = await api.post(`/groups/${id}/messages`, { text, replyTo });
       setChatMsgs((prev) => [...prev, data]);
       onActivity?.(id); // my message moves this group to the top of the list
     } catch (e) {
       setError(e.message);
     }
+  };
+
+  const deleteChatMsg = async (m) => {
+    if (!(await confirm({ title: 'Delete message?', message: 'This will delete the message for everyone in the group.', confirmText: 'Delete', danger: true }))) return;
+    try {
+      const { data } = await api.delete(`/groups/${id}/messages/${m._id}`);
+      setChatMsgs((prev) => prev.map((x) => (x._id === data.message._id ? data.message : x)));
+      if (data.unpinned) setGroup((g) => (g ? { ...g, pinnedMessage: null } : g));
+      if (replyingTo?._id === data.message._id) setReplyingTo(null);
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
+  // Jump to (and briefly flash) the original message a quote-preview points at.
+  const scrollToMessage = (msgId) => {
+    const node = msgNodeRefs.current[msgId];
+    if (!node) return;
+    node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setHighlightId(msgId);
+    setTimeout(() => setHighlightId((h) => (h === msgId ? null : h)), 1500);
   };
 
   if (!group) return <div className="group-placeholder"><div className="spinner" /></div>;
@@ -301,41 +338,76 @@ export default function GroupView({ id, onChanged, onPatched, onBack, onActivity
               chatMsgs.map((m) => {
                 const mine = m.from?._id === user._id;
                 const isPinned = pinnedId === String(m._id);
+                const canDelete = !m.deleted && (mine || isAdmin);
                 return (
                   <div
                     key={m._id}
-                    className={`dm-msg ${mine ? 'me' : 'them'}${isPinned ? ' pinned' : ''}`}
+                    ref={(node) => { if (node) msgNodeRefs.current[m._id] = node; else delete msgNodeRefs.current[m._id]; }}
+                    className={`dm-msg ${mine ? 'me' : 'them'}${isPinned ? ' pinned' : ''}${highlightId === m._id ? ' flash' : ''}`}
                     style={mine ? { background: theme.dot } : undefined}
                   >
-                    {!mine && <div className="grp-author">{displayName(m.from)}</div>}
-                    {m.text}
-                    <div style={{ fontSize: 10, opacity: 0.65, marginTop: 3 }}>{timeAgo(m.createdAt)}</div>
-                    {isAdmin && (
-                      <button
-                        className="grp-msg-pin"
-                        onClick={() => pinMessage(isPinned ? null : m._id)}
-                        disabled={busy}
-                        title={isPinned ? 'Unpin message' : 'Pin message'}
-                        aria-label={isPinned ? 'Unpin message' : 'Pin message'}
-                      >
-                        <i className={isPinned ? 'bi bi-pin-angle-fill' : 'bi bi-pin-angle'} />
-                      </button>
+                    {!m.deleted && (
+                      <span className="msg-actions">
+                        <button className="msg-action" onClick={() => setReplyingTo(m)} title="Reply" aria-label="Reply">
+                          <i className="bi bi-reply-fill" />
+                        </button>
+                        {canDelete && (
+                          <button className="msg-action" onClick={() => deleteChatMsg(m)} title="Delete" aria-label="Delete">
+                            <i className="bi bi-trash3" />
+                          </button>
+                        )}
+                        {isAdmin && (
+                          <button
+                            className="msg-action"
+                            onClick={() => pinMessage(isPinned ? null : m._id)}
+                            disabled={busy}
+                            title={isPinned ? 'Unpin message' : 'Pin message'}
+                            aria-label={isPinned ? 'Unpin message' : 'Pin message'}
+                          >
+                            <i className={isPinned ? 'bi bi-pin-angle-fill' : 'bi bi-pin-angle'} />
+                          </button>
+                        )}
+                      </span>
                     )}
+                    {!mine && !m.deleted && <div className="grp-author">{displayName(m.from)}</div>}
+                    {m.replyTo && (
+                      <div className="msg-reply-quote" onClick={() => scrollToMessage(m.replyTo._id)}>
+                        <div className="msg-reply-quote-from">{m.replyTo.deleted ? 'Deleted message' : (m.replyTo.from?._id === user._id ? 'You' : displayName(m.replyTo.from))}</div>
+                        {!m.replyTo.deleted && <div className="msg-reply-quote-text">{m.replyTo.text}</div>}
+                      </div>
+                    )}
+                    {m.deleted ? (
+                      <span className="msg-deleted"><i className="bi bi-slash-circle" /> This message was deleted</span>
+                    ) : (
+                      m.text
+                    )}
+                    <div style={{ fontSize: 10, opacity: 0.65, marginTop: 3 }}>{timeAgo(m.createdAt)}</div>
                   </div>
                 );
               })
             )}
           </div>
           {group.chatEnabled ? (
-            <div className="dm-input-row">
-              <input
-                placeholder="Type a message..."
-                value={chatText}
-                onChange={(e) => setChatText(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && sendChat()}
-              />
-              <button className="btn btn-sm" style={{ background: theme.dot, color: '#fff' }} onClick={sendChat}>Send</button>
-            </div>
+            <>
+              {replyingTo && (
+                <div className="msg-reply-composer">
+                  <div className="msg-reply-quote-body">
+                    <div className="msg-reply-quote-from">{replyingTo.from?._id === user._id ? 'You' : displayName(replyingTo.from)}</div>
+                    <div className="msg-reply-quote-text">{replyingTo.text}</div>
+                  </div>
+                  <button className="msg-reply-cancel" onClick={() => setReplyingTo(null)} aria-label="Cancel reply">✕</button>
+                </div>
+              )}
+              <div className="dm-input-row">
+                <input
+                  placeholder="Type a message..."
+                  value={chatText}
+                  onChange={(e) => setChatText(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && sendChat()}
+                />
+                <button className="btn btn-sm" style={{ background: theme.dot, color: '#fff' }} onClick={sendChat}>Send</button>
+              </div>
+            </>
           ) : (
             <div className="chat-disabled-note">An admin has disabled chat for this group.</div>
           )}
