@@ -119,7 +119,7 @@ const MOBILE_TABS = {
 
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
-  const { unreadCount } = useLive();
+  const { unreadCount, messageUnreadTotal } = useLive();
   const { openNew, openProject, selectedProjectId, showNew, showNewGroup } = useUI();
   const { theme, toggleTheme } = useTheme();
   const { departments: DEPTS } = useSettings();
@@ -339,7 +339,7 @@ export default function Layout({ children }) {
         const barTabs = cfg.primary.slice(0, 3);          // three flanking tabs
         const overflow = [...cfg.primary.slice(3), ...cfg.more]; // demoted tab + secondary
         const inMore = overflow.some((m) => active(m.path));
-        const overflowUnread = cfg.primary.slice(3).some((t) => t.badge) && unreadCount > 0;
+        const overflowUnread = cfg.primary.slice(3).some((t) => t.badge) && messageUnreadTotal > 0;
 
         const renderTab = (t) => {
           if (!t) return null;
@@ -353,8 +353,8 @@ export default function Layout({ children }) {
               aria-current={on ? 'page' : undefined}
             >
               <i className={`bi ${on && t.active ? t.active : t.icon}`} />
-              {t.badge && unreadCount > 0 && (
-                <span className="tabbar-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
+              {t.badge && messageUnreadTotal > 0 && (
+                <span className="tabbar-badge">{messageUnreadTotal > 99 ? '99+' : messageUnreadTotal}</span>
               )}
             </button>
           );
@@ -385,7 +385,7 @@ export default function Layout({ children }) {
               >
                 <i className="bi bi-three-dots" />
                 {overflowUnread && (
-                  <span className="tabbar-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
+                  <span className="tabbar-badge">{messageUnreadTotal > 99 ? '99+' : messageUnreadTotal}</span>
                 )}
               </button>
             </nav>
@@ -403,8 +403,8 @@ export default function Layout({ children }) {
                         role="menuitem"
                       >
                         <i className={`bi ${m.icon}`} /> <span>{m.label}</span>
-                        {m.badge && unreadCount > 0 && (
-                          <span className="more-sheet-count">{unreadCount > 99 ? '99+' : unreadCount}</span>
+                        {m.badge && messageUnreadTotal > 0 && (
+                          <span className="more-sheet-count">{messageUnreadTotal > 99 ? '99+' : messageUnreadTotal}</span>
                         )}
                       </button>
                     ))}

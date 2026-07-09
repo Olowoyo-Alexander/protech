@@ -11,6 +11,12 @@ export function SocketProvider({ children }) {
   const [online, setOnline] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [toasts, setToasts] = useState([]);
+  // Actual unread direct-message count — deliberately separate from the
+  // notification-bell unreadCount below. A "message" notification and its
+  // underlying Message are two different records with two different `read`
+  // flags; opening a thread marks the messages read but not the notification,
+  // so a badge driven by unreadCount would never clear on its own.
+  const [messageUnreadTotal, setMessageUnreadTotal] = useState(0);
   const socketRef = useRef(null);
   const msgListeners = useRef(new Set());
   const groupMsgListeners = useRef(new Set());
@@ -32,6 +38,19 @@ export function SocketProvider({ children }) {
     }
   }, []);
 
+  // Re-derives the true unread-message total from the server. Called on
+  // login, on every incoming live message, and explicitly by Messages.jsx
+  // right after it marks a thread read — so the badge reflects reality
+  // instantly rather than waiting on the next unrelated re-render.
+  const refreshMessageUnread = useCallback(async () => {
+    try {
+      const { data } = await api.get('/messages');
+      setMessageUnreadTotal(data.reduce((sum, x) => sum + x.count, 0));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   // Connect socket + load notifications when logged in
   useEffect(() => {
     if (!user) {
@@ -39,10 +58,12 @@ export function SocketProvider({ children }) {
       socketRef.current = null;
       setNotifications([]);
       setOnline([]);
+      setMessageUnreadTotal(0);
       return;
     }
 
     fetchNotifications();
+    refreshMessageUnread();
 
     const token = localStorage.getItem('prostech_token');
     const socket = io(import.meta.env.VITE_API_URL || '/', {
@@ -58,6 +79,7 @@ export function SocketProvider({ children }) {
     });
     socket.on('message', (m) => {
       msgListeners.current.forEach((fn) => fn(m));
+      refreshMessageUnread();
     });
     socket.on('groupMessage', (payload) => {
       groupMsgListeners.current.forEach((fn) => fn(payload));
@@ -70,7 +92,7 @@ export function SocketProvider({ children }) {
     });
 
     return () => socket.disconnect();
-  }, [user, fetchNotifications, toast]);
+  }, [user, fetchNotifications, refreshMessageUnread, toast]);
 
   const subscribeMessages = useCallback((fn) => {
     msgListeners.current.add(fn);
@@ -121,6 +143,8 @@ export function SocketProvider({ children }) {
         online,
         notifications,
         unreadCount,
+        messageUnreadTotal,
+        refreshMessageUnread,
         fetchNotifications,
         markRead,
         markAllRead,

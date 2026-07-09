@@ -8,7 +8,7 @@ import { ROLE_LABELS, timeAgo, displayName } from '../utils.js';
 
 export default function Messages() {
   const { user } = useAuth();
-  const { online, subscribeMessages, subscribeMessageDeleted, fetchNotifications } = useLive();
+  const { online, subscribeMessages, subscribeMessageDeleted, fetchNotifications, refreshMessageUnread } = useLive();
   const confirm = useConfirm();
   // Admins & supervisors browse the whole directory; everyone else only sees
   // their own conversations and adds new people by matric/name (WhatsApp-style).
@@ -82,12 +82,15 @@ export default function Messages() {
       setSelected(uid);
       setInfoOpen(false);
       setReplyingTo(null);
+      // Instant local feedback — the per-conversation badge disappears the
+      // moment the thread opens, without waiting on the network round trip.
       setUnread((u) => ({ ...u, [uid]: 0 }));
-      const { data } = await api.get(`/messages/${uid}`);
+      const { data } = await api.get(`/messages/${uid}`); // marks them read server-side
       setMessages(data);
       fetchNotifications();
+      refreshMessageUnread(); // re-derive the global Messages-nav badge from the server
     },
-    [fetchNotifications]
+    [fetchNotifications, refreshMessageUnread]
   );
 
   // Pick a looked-up person: drop them into the sidebar and open the thread.
@@ -116,6 +119,12 @@ export default function Messages() {
     return subscribeMessages((m) => {
       if (selected && (m.from === selected || m.to === selected)) {
         setMessages((prev) => [...prev, m]);
+        // The thread is open right now, so this message is effectively read
+        // immediately — mark it so server-side (same call loadThread uses)
+        // rather than letting it sit unread until the thread is reopened.
+        if (m.from === selected) {
+          api.get(`/messages/${selected}`).then(refreshMessageUnread);
+        }
       } else {
         setUnread((u) => ({ ...u, [m.from]: (u[m.from] || 0) + 1 }));
         // A message from someone not yet in the sidebar — refresh so the new
@@ -128,7 +137,7 @@ export default function Messages() {
       // The newest conversation rises to the top of the list.
       bumpUser(m.from);
     });
-  }, [subscribeMessages, selected, loadUsers, bumpUser]);
+  }, [subscribeMessages, selected, loadUsers, bumpUser, refreshMessageUnread]);
 
   // Live delete: the other participant deleted a message they sent. It's
   // removed outright — no "message deleted" trace is shown on either side.
