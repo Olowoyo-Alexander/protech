@@ -63,7 +63,7 @@ export function AuthProvider({ children }) {
 
   const resend = async (email) => (await api.post('/auth/resend', { email })).data;
 
-  const logout = useCallback((reason) => {
+  const logout = useCallback(() => {
     // Remember which role's gateway to return to, so logging out lands on the
     // login page for the account that was just signed out (not the default).
     setUser((u) => {
@@ -72,24 +72,35 @@ export function AuthProvider({ children }) {
       return null;
     });
     localStorage.removeItem('prostech_token');
-    if (reason === 'idle') localStorage.setItem('prostech_idle_logout', '1');
   }, []);
 
   // Auto sign-out after 15 minutes with no mouse/keyboard/touch/scroll activity,
   // independent of how long the JWT itself is still valid for. Uses a cheap
   // timestamp ref (no re-renders on every mousemove) checked on an interval,
   // rather than resetting a setTimeout on every single activity event.
+  //
+  // The interval alone isn't reliable: browsers heavily throttle setInterval in
+  // a backgrounded/unfocused tab (often to once a minute or slower), which is
+  // exactly the situation "inactivity" usually means — the user switched away.
+  // So the elapsed time is also re-checked immediately on visibilitychange/focus,
+  // catching an overdue logout the moment the tab is looked at again, rather
+  // than waiting on a throttled timer that may not fire anywhere near on time.
   const lastActivityRef = useRef(Date.now());
   useEffect(() => {
     if (!user) return undefined;
     lastActivityRef.current = Date.now();
     const markActive = () => { lastActivityRef.current = Date.now(); };
+    const checkIdle = () => {
+      if (Date.now() - lastActivityRef.current >= IDLE_LIMIT_MS) logout();
+    };
     ACTIVITY_EVENTS.forEach((evt) => window.addEventListener(evt, markActive, { passive: true }));
-    const interval = setInterval(() => {
-      if (Date.now() - lastActivityRef.current >= IDLE_LIMIT_MS) logout('idle');
-    }, IDLE_CHECK_MS);
+    document.addEventListener('visibilitychange', checkIdle);
+    window.addEventListener('focus', checkIdle);
+    const interval = setInterval(checkIdle, IDLE_CHECK_MS);
     return () => {
       ACTIVITY_EVENTS.forEach((evt) => window.removeEventListener(evt, markActive));
+      document.removeEventListener('visibilitychange', checkIdle);
+      window.removeEventListener('focus', checkIdle);
       clearInterval(interval);
     };
   }, [user, logout]);
