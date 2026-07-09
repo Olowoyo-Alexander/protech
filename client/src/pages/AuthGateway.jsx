@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
@@ -42,6 +42,15 @@ function Gateway({ gw }) {
     title: 'Dr.',
     adminSetupKey: '',
   });
+
+  // Surface a one-time notice if the last session ended via the 15-minute
+  // inactivity auto-logout (AuthContext.jsx), rather than a silent redirect.
+  useEffect(() => {
+    if (localStorage.getItem('prostech_idle_logout')) {
+      localStorage.removeItem('prostech_idle_logout');
+      setInfo('You were signed out after 15 minutes of inactivity.');
+    }
+  }, []);
 
   // Track which email fields have been blurred so we only flag a bad format
   // after the user has finished typing, not on the first keystroke.
@@ -238,6 +247,7 @@ function Gateway({ gw }) {
                   </div>
                 )}
                 <Field label="Password" type="password" value={login_.password} onChange={(e) => setLogin({ ...login_, password: e.target.value })} autoComplete="current-password" onKeyDown={(e) => e.key === 'Enter' && doLogin()} />
+                {info && <div className="auth-ok">{info}</div>}
                 {error && <div className="auth-error">{error}</div>}
                 <button className="btn btn-primary" style={{ width: '100%', marginTop: '1.25rem' }} onClick={doLogin} disabled={busy}>
                   {busy ? 'Signing in...' : `Sign In as ${gw.label}`}
