@@ -125,18 +125,25 @@ export const getAnalytics = asyncHandler(async (req, res) => {
     .populate('authors', 'level')
     .lean();
   const trendMap = {}; // "y-m" -> { level -> totalEngagement }
+  const trendBreakdown = {}; // "y-m" -> { level -> { likes, comments, bookmarks, ratings, recommended } }
   const trendProjects = {}; // "y-m" -> { level -> [{_id,title,sub}] } — click-through
   for (const d of trendDocs) {
     const level = levelOf(d.authors);
     const dt = new Date(d.createdAt);
     const key = `${dt.getFullYear()}-${dt.getMonth() + 1}`;
-    const eng =
-      (d.likes || []).length +
-      (d.comments || []).length +
-      (d.bookmarks || []).length +
-      (d.ratings || []).length +
-      (d.spotlight && d.spotlight.recommended ? 1 : 0);
+    const likes = (d.likes || []).length;
+    const comments = (d.comments || []).length;
+    const bookmarks = (d.bookmarks || []).length;
+    const ratings = (d.ratings || []).length;
+    const recommended = d.spotlight && d.spotlight.recommended ? 1 : 0;
+    const eng = likes + comments + bookmarks + ratings + recommended;
     ((trendMap[key] ||= {})[level] = (trendMap[key][level] || 0) + eng);
+    const b = ((trendBreakdown[key] ||= {})[level] ||= { likes: 0, comments: 0, bookmarks: 0, ratings: 0, recommended: 0 });
+    b.likes += likes;
+    b.comments += comments;
+    b.bookmarks += bookmarks;
+    b.ratings += ratings;
+    b.recommended += recommended;
     const list = ((trendProjects[key] ||= {})[level] ||= []);
     if (list.length < 20) list.push({ _id: d._id, title: d.title, sub: `${eng} engagement` });
   }
@@ -145,10 +152,11 @@ export const getAnalytics = asyncHandler(async (req, res) => {
   const cursor = new Date(start);
   for (let i = 0; i < 6; i++) {
     const key = `${cursor.getFullYear()}-${cursor.getMonth() + 1}`;
-    const row = { month: MONTHS[cursor.getMonth()], projects: {} };
+    const row = { month: MONTHS[cursor.getMonth()], projects: {}, breakdown: {} };
     for (const l of levelKeys) {
       row[l] = (trendMap[key] && trendMap[key][l]) || 0;
       row.projects[l] = (trendProjects[key] && trendProjects[key][l]) || [];
+      row.breakdown[l] = (trendBreakdown[key] && trendBreakdown[key][l]) || { likes: 0, comments: 0, bookmarks: 0, ratings: 0, recommended: 0 };
     }
     engagementTrend.push(row);
     cursor.setMonth(cursor.getMonth() + 1);

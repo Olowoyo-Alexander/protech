@@ -14,6 +14,28 @@ const tooltipStyle = {
   color: 'var(--text)',
 };
 
+// Stacked bars always report every series, even ones at 0 for that category
+// (e.g. an "Unspecified" level with nothing in it) — cluttering the tooltip
+// with rows that carry no information. Hide zero rows whenever at least one
+// series has a real value; only fall back to showing everything (including
+// zeros) if the whole stack is empty, so the tooltip is never blank.
+function StackedTooltip({ active, payload, label }) {
+  if (!active || !payload || !payload.length) return null;
+  const nonZero = payload.filter((p) => Number(p.value) > 0);
+  const rows = payload.length > 1 && nonZero.length ? nonZero : payload;
+  return (
+    <div style={{ ...tooltipStyle, padding: '10px 12px' }}>
+      <div style={{ fontWeight: 600, marginBottom: 4 }}>{label}</div>
+      {rows.map((p) => (
+        <div key={p.dataKey} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, color: p.color }}>
+          <span>{p.name}</span>
+          <span style={{ fontWeight: 600 }}>{p.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // The value sits inside the upper part of the bar (no badge). `y` is the top of
 // the (whole) bar; a hanging baseline draws the number just below that edge, so
 // the whole glyph stays inside the top. A thin dark outline keeps the white
@@ -123,7 +145,7 @@ export default function BarGraph({
             height={28}
           />
           <YAxis allowDecimals={false} width={30} tick={{ fill: 'var(--textmuted)', fontSize: 11 }} tickLine={false} axisLine={false} />
-          <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'var(--surface)' }} />
+          <Tooltip content={<StackedTooltip />} cursor={{ fill: 'var(--surface)' }} />
           {series.map((s, i) => {
             const last = i === series.length - 1;
             return (

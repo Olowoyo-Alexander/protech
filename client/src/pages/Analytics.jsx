@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 import { tierEmoji, CHART_COLORS } from '../utils.js';
 import BarGraph from '../components/BarGraph.jsx';
+import { HeartIcon, CommentIcon, BookmarkIcon, StarIcon } from '../components/Icons.jsx';
 
 const axisTick = { fill: 'var(--textmuted)', fontSize: 11 };
 const tooltipStyle = {
@@ -15,6 +16,41 @@ const tooltipStyle = {
   fontSize: 12,
   color: 'var(--text)',
 };
+
+// One line per level in the trend chart is a *total* of five distinct
+// engagement types; this breaks that total back down so a reader can see
+// what it's actually made of, not just an opaque combined number. Levels
+// with nothing going on at this point are hidden rather than listed at 0,
+// unless every level is empty (then the raw rows are shown so the tooltip
+// is never blank).
+function EngagementTooltip({ active, payload, label }) {
+  if (!active || !payload || !payload.length) return null;
+  const nonZero = payload.filter((p) => Number(p.value) > 0);
+  const rows = payload.length > 1 && nonZero.length ? nonZero : payload;
+  return (
+    <div style={{ ...tooltipStyle, padding: '10px 12px', minWidth: 190 }}>
+      <div style={{ fontWeight: 600, marginBottom: 6 }}>{label}</div>
+      {rows.map((p) => {
+        const b = p.payload?.breakdown?.[p.dataKey] || {};
+        return (
+          <div key={p.dataKey} style={{ marginBottom: 6 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, color: p.color, fontWeight: 600 }}>
+              <span>{p.name}</span>
+              <span>{p.value} total</span>
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 2, color: 'var(--textmuted)', fontSize: 11 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><HeartIcon size={11} filled /> {b.likes || 0}</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><CommentIcon size={11} /> {b.comments || 0}</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><BookmarkIcon size={11} /> {b.bookmarks || 0}</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><StarIcon size={11} filled /> {b.ratings || 0}</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>🌟 {b.recommended || 0}</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function Analytics() {
   const { openProject, refreshKey } = useUI();
@@ -120,7 +156,7 @@ export default function Analytics() {
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                   <XAxis dataKey="month" tick={axisTick} tickLine={false} axisLine={{ stroke: 'var(--border)' }} />
                   <YAxis allowDecimals={false} tick={axisTick} width={30} tickLine={false} axisLine={false} />
-                  <Tooltip contentStyle={tooltipStyle} />
+                  <Tooltip content={<EngagementTooltip />} />
                   {levelKeys.map((l, i) => {
                     const color = CHART_COLORS[i % CHART_COLORS.length];
                     const onDotClick = (props) => {
