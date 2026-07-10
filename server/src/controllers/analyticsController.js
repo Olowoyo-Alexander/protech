@@ -9,14 +9,16 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 // first author that has a level (e.g. "300 Level" → "300L"). We scan all authors
 // so a project co-authored/published with a level-less user (e.g. a supervisor)
 // still resolves to the student's real level rather than a catch-all. Projects
-// where no author has any level are left out of the level breakdown entirely.
+// where no author has any level fall back to "Unspecified" so they still show
+// up in every chart instead of silently vanishing.
 const LEVEL_ORDER = ['100L', '200L', '300L', '400L', '500L', '600L'];
+const UNSPECIFIED_LEVEL = 'Unspecified';
 const levelOf = (authors) => {
   for (const a of authors || []) {
     const m = String((a && a.level) || '').match(/(\d{3})/);
     if (m) return `${m[1]}L`;
   }
-  return null;
+  return UNSPECIFIED_LEVEL;
 };
 // Order the levels found: numeric levels ascending, anything else after.
 const orderLevels = (set) => {
@@ -81,7 +83,6 @@ export const getAnalytics = asyncHandler(async (req, res) => {
   const isCollab = (d) => d.extends && d.status !== 'pending';
   for (const d of docs) {
     const level = levelOf(d.authors);
-    if (!level) continue; // only projects with an actual level appear in the breakdown
     const dept = d.dept || 'Unknown';
     levelSeen.add(level);
     const item = { _id: d._id, title: d.title, sub: `${d.set} · ${level} · ${d.status}` };
@@ -127,7 +128,6 @@ export const getAnalytics = asyncHandler(async (req, res) => {
   const trendProjects = {}; // "y-m" -> { level -> [{_id,title,sub}] } — click-through
   for (const d of trendDocs) {
     const level = levelOf(d.authors);
-    if (!level) continue; // engagement without an involved level isn't attributed
     const dt = new Date(d.createdAt);
     const key = `${dt.getFullYear()}-${dt.getMonth() + 1}`;
     const eng =
