@@ -223,7 +223,7 @@ export default function Analytics() {
       </div>
 
       <div className="chart-card">
-        <div className="chart-title">🏆 Top Projects by Gold</div>
+        <div className="chart-title">🏆 Top Projects by Engagement</div>
         {topProjects.length === 0 ? (
           <div style={{ color: 'var(--textmuted)', fontSize: 13 }}>No approved projects yet.</div>
         ) : (
@@ -236,7 +236,7 @@ export default function Analytics() {
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div className="score-num">{p.gold}</div>
-                <div style={{ fontSize: 10, color: 'var(--textmuted)' }}>gold</div>
+                <div style={{ fontSize: 10, color: 'var(--textmuted)' }}>{p.gold === 1 ? 'star' : 'stars'}</div>
               </div>
             </div>
           ))

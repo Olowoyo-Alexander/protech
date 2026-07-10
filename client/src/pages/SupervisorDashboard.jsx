@@ -128,7 +128,7 @@ export default function SupervisorDashboard() {
                     <th>Status</th>
                     <th>❤</th>
                     <th>★</th>
-                    <th>Gold</th>
+                    <th>Stars</th>
                   </tr>
                 </thead>
                 <tbody>
