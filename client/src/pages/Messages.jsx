@@ -21,6 +21,7 @@ export default function Messages() {
   const [text, setText] = useState('');
   const [infoOpen, setInfoOpen] = useState(false); // contact info panel (header click)
   const [replyingTo, setReplyingTo] = useState(null); // message object being replied to
+  const [selectedMsg, setSelectedMsg] = useState(null); // message double-tapped for actions
   const [highlightId, setHighlightId] = useState(null); // briefly flashed after a quote-jump
   const msgsRef = useRef(null);
   const msgNodeRefs = useRef({}); // messageId -> DOM node, for quote-jump scrolling
@@ -82,6 +83,7 @@ export default function Messages() {
       setSelected(uid);
       setInfoOpen(false);
       setReplyingTo(null);
+      setSelectedMsg(null);
       // Instant local feedback — the per-conversation badge disappears the
       // moment the thread opens, without waiting on the network round trip.
       setUnread((u) => ({ ...u, [uid]: 0 }));
@@ -144,6 +146,7 @@ export default function Messages() {
   useEffect(() => {
     return subscribeMessageDeleted((m) => {
       setMessages((prev) => prev.filter((x) => x._id !== m._id));
+      setSelectedMsg((s) => (s?._id === m._id ? null : s));
     });
   }, [subscribeMessageDeleted]);
 
@@ -168,6 +171,7 @@ export default function Messages() {
     const { data } = await api.delete(`/messages/msg/${m._id}`);
     setMessages((prev) => prev.filter((x) => x._id !== data._id));
     if (replyingTo?._id === data._id) setReplyingTo(null);
+    if (selectedMsg?._id === data._id) setSelectedMsg(null);
   };
 
   // Jump to (and briefly flash) the original message a quote-preview points at.
@@ -256,20 +260,39 @@ export default function Messages() {
 
           {selected ? (
             <div className="dm-chat">
-              <div className="dm-chat-hdr" style={{ padding: '.75rem 1rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <button className="dm-back" onClick={() => setSelected(null)} aria-label="Back">
-                  <i className="bi bi-arrow-left" />
-                </button>
-                <div className="dm-hdr-id" onClick={() => setInfoOpen((o) => !o)} title="View contact info" style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', flex: 1, minWidth: 0 }}>
-                  <Avatar user={other} size={30} />
-                  <div style={{ minWidth: 0 }}>
-                    <div className="dm-uname" style={{ fontSize: 13, fontWeight: 500 }}>{displayName(other)}</div>
-                    <div style={{ fontSize: 11, color: 'var(--textmuted)' }}>
-                      {online.includes(selected) ? '🟢 Online' : ROLE_LABELS[other?.role]}
+              {selectedMsg ? (
+                <div className="dm-chat-hdr msg-select-bar">
+                  <button className="dm-back" onClick={() => setSelectedMsg(null)} aria-label="Cancel selection">
+                    <i className="bi bi-arrow-left" />
+                  </button>
+                  <div className="msg-select-preview">{selectedMsg.text}</div>
+                  <span className="msg-select-icons">
+                    <button onClick={() => { setReplyingTo(selectedMsg); setSelectedMsg(null); }} title="Reply" aria-label="Reply">
+                      <i className="bi bi-reply-fill" />
+                    </button>
+                    {selectedMsg.from === user._id && (
+                      <button onClick={() => deleteMsg(selectedMsg)} title="Delete" aria-label="Delete">
+                        <i className="bi bi-trash3" />
+                      </button>
+                    )}
+                  </span>
+                </div>
+              ) : (
+                <div className="dm-chat-hdr">
+                  <button className="dm-back" onClick={() => setSelected(null)} aria-label="Back">
+                    <i className="bi bi-arrow-left" />
+                  </button>
+                  <div className="dm-hdr-id" onClick={() => setInfoOpen((o) => !o)} title="View contact info" style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', flex: 1, minWidth: 0 }}>
+                    <Avatar user={other} size={30} />
+                    <div style={{ minWidth: 0 }}>
+                      <div className="dm-uname" style={{ fontSize: 13, fontWeight: 500 }}>{displayName(other)}</div>
+                      <div style={{ fontSize: 11, color: 'var(--textmuted)' }}>
+                        {online.includes(selected) ? '🟢 Online' : ROLE_LABELS[other?.role]}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {infoOpen && other && (
                 <div className="dm-info">
@@ -302,18 +325,9 @@ export default function Messages() {
                     <div
                       key={m._id}
                       ref={(node) => { if (node) msgNodeRefs.current[m._id] = node; else delete msgNodeRefs.current[m._id]; }}
-                      className={`dm-msg ${mine ? 'me' : 'them'}${highlightId === m._id ? ' flash' : ''}`}
+                      className={`dm-msg ${mine ? 'me' : 'them'}${highlightId === m._id ? ' flash' : ''}${selectedMsg?._id === m._id ? ' selected' : ''}`}
+                      onDoubleClick={() => setSelectedMsg(m)}
                     >
-                      <span className="msg-actions">
-                        <button className="msg-action" onClick={() => setReplyingTo(m)} title="Reply" aria-label="Reply">
-                          <i className="bi bi-reply-fill" />
-                        </button>
-                        {mine && (
-                          <button className="msg-action" onClick={() => deleteMsg(m)} title="Delete" aria-label="Delete">
-                            <i className="bi bi-trash3" />
-                          </button>
-                        )}
-                      </span>
                       {m.replyTo && (
                         <div className="msg-reply-quote" onClick={() => scrollToMessage(m.replyTo._id)}>
                           <div className="msg-reply-quote-from">{m.replyTo.from?._id === user._id ? 'You' : displayName(m.replyTo.from)}</div>

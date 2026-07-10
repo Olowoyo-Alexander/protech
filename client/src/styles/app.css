@@ -740,16 +740,26 @@ body.no-scroll{overflow:hidden}
 .grp-pinned-text{font-size:12px;color:var(--textmuted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .grp-pinned-x{border:none;background:transparent;color:var(--textmuted);cursor:pointer;font-size:13px;flex:0 0 auto;width:24px;height:24px;border-radius:50%}
 .grp-pinned-x:hover{background:var(--border);color:var(--text)}
-.dm-msg{position:relative}
+.dm-msg{position:relative;cursor:pointer}
 .dm-msg.pinned{box-shadow:0 0 0 2px var(--amber)}
+.dm-msg.selected{box-shadow:0 0 0 2px var(--blue)}
 .chat-disabled-note{padding:.75rem;border-top:1px solid var(--border);font-size:12px;color:var(--textmuted);text-align:center}
 
-/* Per-message hover actions (reply / delete / pin) — a small cluster of round
-   icon buttons in the top-right corner of a bubble, revealed on hover. */
-.msg-actions{position:absolute;top:3px;right:3px;display:none;gap:3px}
-.dm-msg:hover .msg-actions{display:flex}
-.msg-action{border:none;background:rgba(0,0,0,.2);color:#fff;width:20px;height:20px;border-radius:50%;cursor:pointer;font-size:10px;display:inline-flex;align-items:center;justify-content:center;line-height:1;flex:0 0 auto}
-.msg-action:hover{background:rgba(0,0,0,.35)}
+/* WhatsApp-style selection bar: double-tapping a message swaps the normal
+   thread/group header for this bar (same layout, so it reuses .dm-chat-hdr /
+   .group-hdr) — a back arrow to cancel, a preview of the selected message,
+   and the actions (reply / delete / pin) that apply to it. Replaces the old
+   hover-revealed per-bubble icons, which were unreachable on touch devices. */
+.dm-chat-hdr{padding:.75rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.msg-select-bar{background:var(--surface)}
+.msg-select-bar .dm-back,
+.msg-select-bar .gh-back{display:inline-flex !important;align-items:center;justify-content:center;width:34px;height:34px;flex:0 0 auto;border:none;background:transparent;color:var(--text);border-radius:50%;cursor:pointer;font-size:17px}
+.msg-select-bar .dm-back:hover,
+.msg-select-bar .gh-back:hover{background:var(--border)}
+.msg-select-preview{flex:1;min-width:0;font-size:13px;color:var(--textmuted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.msg-select-icons{display:flex;gap:4px;flex:0 0 auto}
+.msg-select-icons button{border:none;background:transparent;color:var(--text);width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:16px;display:inline-flex;align-items:center;justify-content:center}
+.msg-select-icons button:hover{background:var(--border)}
 
 /* Reply-quote preview, rendered above a message's own text when it replies to
    another message. currentColor adapts the accent to the bubble's text colour

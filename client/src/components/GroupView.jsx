@@ -41,6 +41,7 @@ export default function GroupView({ id, onChanged, onPatched, onBack, onActivity
   const [chatMsgs, setChatMsgs] = useState([]);
   const [chatText, setChatText] = useState('');
   const [replyingTo, setReplyingTo] = useState(null); // chat message being replied to
+  const [selectedMsg, setSelectedMsg] = useState(null); // chat message double-tapped for actions
   const [highlightId, setHighlightId] = useState(null); // briefly flashed after a quote-jump
   const chatRef = useRef(null);
   const msgNodeRefs = useRef({}); // messageId -> DOM node, for quote-jump scrolling
@@ -93,6 +94,7 @@ export default function GroupView({ id, onChanged, onPatched, onBack, onActivity
       if (String(groupId) !== String(id)) return;
       setChatMsgs((prev) => prev.filter((x) => x._id !== messageId));
       if (unpinned) setGroup((g) => (g ? { ...g, pinnedMessage: null } : g));
+      setSelectedMsg((s) => (s?._id === messageId ? null : s));
     });
   }, [isMemberView, id, subscribeGroupMessageDeleted]);
 
@@ -264,6 +266,7 @@ export default function GroupView({ id, onChanged, onPatched, onBack, onActivity
       setChatMsgs((prev) => prev.filter((x) => x._id !== data._id));
       if (data.unpinned) setGroup((g) => (g ? { ...g, pinnedMessage: null } : g));
       if (replyingTo?._id === data._id) setReplyingTo(null);
+      if (selectedMsg?._id === data._id) setSelectedMsg(null);
     } catch (e) {
       setError(e.message);
     }
@@ -289,32 +292,61 @@ export default function GroupView({ id, onChanged, onPatched, onBack, onActivity
   return (
     <div className="group-view">
       <div className="group-conv">
-        <div className="group-hdr" style={{ borderTop: `3px solid ${theme.dot}` }}>
-          {onBack && (
-            <button className="gh-back" onClick={onBack} aria-label="Back">
+        {selectedMsg ? (
+          <div className="group-hdr msg-select-bar" style={{ borderTop: `3px solid ${theme.dot}` }}>
+            <button className="gh-back" onClick={() => setSelectedMsg(null)} aria-label="Cancel selection">
               <i className="bi bi-arrow-left" />
             </button>
-          )}
-          <div className="gh-id" onClick={() => setInfoOpen((o) => !o)} title="View group info">
-            <div className="group-ava lg" style={{ background: theme.dot }}>{groupInitials(group.name)}</div>
-            <div style={{ minWidth: 0 }}>
-              <div className="gh-title">{group.name}</div>
-              <div className="gh-sub">
-                {group.dept ? `${group.dept} · ` : ''}
-                {group.memberCount} member{group.memberCount === 1 ? '' : 's'}
-                {group.chatEnabled ? '' : ' · chat off'}
+            <div className="msg-select-preview">{selectedMsg.text}</div>
+            <span className="msg-select-icons">
+              <button onClick={() => { setReplyingTo(selectedMsg); setSelectedMsg(null); }} title="Reply" aria-label="Reply">
+                <i className="bi bi-reply-fill" />
+              </button>
+              {(selectedMsg.from?._id === user._id || isAdmin) && (
+                <button onClick={() => deleteChatMsg(selectedMsg)} title="Delete" aria-label="Delete">
+                  <i className="bi bi-trash3" />
+                </button>
+              )}
+              {isAdmin && (
+                <button
+                  onClick={() => { pinMessage(pinnedId === String(selectedMsg._id) ? null : selectedMsg._id); setSelectedMsg(null); }}
+                  disabled={busy}
+                  title={pinnedId === String(selectedMsg._id) ? 'Unpin message' : 'Pin message'}
+                  aria-label={pinnedId === String(selectedMsg._id) ? 'Unpin message' : 'Pin message'}
+                >
+                  <i className={pinnedId === String(selectedMsg._id) ? 'bi bi-pin-angle-fill' : 'bi bi-pin-angle'} />
+                </button>
+              )}
+            </span>
+          </div>
+        ) : (
+          <div className="group-hdr" style={{ borderTop: `3px solid ${theme.dot}` }}>
+            {onBack && (
+              <button className="gh-back" onClick={onBack} aria-label="Back">
+                <i className="bi bi-arrow-left" />
+              </button>
+            )}
+            <div className="gh-id" onClick={() => setInfoOpen((o) => !o)} title="View group info">
+              <div className="group-ava lg" style={{ background: theme.dot }}>{groupInitials(group.name)}</div>
+              <div style={{ minWidth: 0 }}>
+                <div className="gh-title">{group.name}</div>
+                <div className="gh-sub">
+                  {group.dept ? `${group.dept} · ` : ''}
+                  {group.memberCount} member{group.memberCount === 1 ? '' : 's'}
+                  {group.chatEnabled ? '' : ' · chat off'}
+                </div>
               </div>
             </div>
+            <button
+              className={`gh-info-btn ${infoOpen ? 'active' : ''}`}
+              onClick={() => setInfoOpen((o) => !o)}
+              title="Group info"
+              aria-label="Group info"
+            >
+              <i className="bi bi-info-circle" />
+            </button>
           </div>
-          <button
-            className={`gh-info-btn ${infoOpen ? 'active' : ''}`}
-            onClick={() => setInfoOpen((o) => !o)}
-            title="Group info"
-            aria-label="Group info"
-          >
-            <i className="bi bi-info-circle" />
-          </button>
-        </div>
+        )}
 
         {group.pinnedMessage && (
           <div className="grp-pinned">
@@ -339,35 +371,14 @@ export default function GroupView({ id, onChanged, onPatched, onBack, onActivity
               chatMsgs.map((m) => {
                 const mine = m.from?._id === user._id;
                 const isPinned = pinnedId === String(m._id);
-                const canDelete = mine || isAdmin;
                 return (
                   <div
                     key={m._id}
                     ref={(node) => { if (node) msgNodeRefs.current[m._id] = node; else delete msgNodeRefs.current[m._id]; }}
-                    className={`dm-msg ${mine ? 'me' : 'them'}${isPinned ? ' pinned' : ''}${highlightId === m._id ? ' flash' : ''}`}
+                    className={`dm-msg ${mine ? 'me' : 'them'}${isPinned ? ' pinned' : ''}${highlightId === m._id ? ' flash' : ''}${selectedMsg?._id === m._id ? ' selected' : ''}`}
                     style={mine ? { background: theme.dot } : undefined}
+                    onDoubleClick={() => setSelectedMsg(m)}
                   >
-                    <span className="msg-actions">
-                      <button className="msg-action" onClick={() => setReplyingTo(m)} title="Reply" aria-label="Reply">
-                        <i className="bi bi-reply-fill" />
-                      </button>
-                      {canDelete && (
-                        <button className="msg-action" onClick={() => deleteChatMsg(m)} title="Delete" aria-label="Delete">
-                          <i className="bi bi-trash3" />
-                        </button>
-                      )}
-                      {isAdmin && (
-                        <button
-                          className="msg-action"
-                          onClick={() => pinMessage(isPinned ? null : m._id)}
-                          disabled={busy}
-                          title={isPinned ? 'Unpin message' : 'Pin message'}
-                          aria-label={isPinned ? 'Unpin message' : 'Pin message'}
-                        >
-                          <i className={isPinned ? 'bi bi-pin-angle-fill' : 'bi bi-pin-angle'} />
-                        </button>
-                      )}
-                    </span>
                     {!mine && <div className="grp-author">{displayName(m.from)}</div>}
                     {m.replyTo && (
                       <div className="msg-reply-quote" onClick={() => scrollToMessage(m.replyTo._id)}>
