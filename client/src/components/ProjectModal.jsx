@@ -7,6 +7,20 @@ import Avatar from './Avatar.jsx';
 import { HeartIcon, BookmarkIcon, StarIcon, OpenInNewTabIcon, DownloadIcon } from './Icons.jsx';
 import { ROLE_LABELS, timeAgo, groupTheme, recoMeta, displayName } from '../utils.js';
 
+const OFFICE_EXTENSIONS = ['.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx'];
+
+// A URL an <iframe>/new tab can actually render inline. PDFs are rendered
+// directly by the browser; office formats have no native browser renderer,
+// so they're routed through Google's document viewer instead.
+function docViewerUrl(url, name) {
+  const lower = (name || '').toLowerCase();
+  if (lower.endsWith('.pdf')) return url;
+  if (OFFICE_EXTENSIONS.some((ext) => lower.endsWith(ext))) {
+    return `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
+  }
+  return null;
+}
+
 export default function ProjectModal({ id }) {
   const { user } = useAuth();
   const { closeProject, triggerRefresh, openCollab, openProject } = useUI();
@@ -332,7 +346,7 @@ export default function ProjectModal({ id }) {
                 </button>
                 {p.docUrl && (
                   <span className="doc-actions">
-                    <a href={p.docUrl} target="_blank" rel="noreferrer" title="Open in new tab" aria-label="Open in new tab">
+                    <a href={docViewerUrl(p.docUrl, p.docName) || p.docUrl} target="_blank" rel="noreferrer" title="Open in new tab" aria-label="Open in new tab">
                       <OpenInNewTabIcon />
                     </a>
                     <a href={p.docUrl.replace('/upload/', '/upload/fl_attachment/')} title="Download" aria-label="Download">
@@ -343,15 +357,17 @@ export default function ProjectModal({ id }) {
               </div>
               {docOpen && (
                 p.docUrl ? (
-                  p.docName.toLowerCase().endsWith('.pdf') ? (
-                    // PDFs preview inline in the browser's built-in viewer.
-                    <iframe className="doc-viewer" src={p.docUrl} title={p.docName} />
+                  docViewerUrl(p.docUrl, p.docName) ? (
+                    // PDFs preview inline via the browser's built-in viewer; office
+                    // formats (DOCX/PPTX/XLSX, etc.) via Google's document viewer,
+                    // since browsers have no native renderer for those formats.
+                    <iframe className="doc-viewer" src={docViewerUrl(p.docUrl, p.docName)} title={p.docName} />
                   ) : (
-                    // Non-PDF types (DOCX, etc.) can't be previewed reliably in-browser,
-                    // so we surface the file with open/download actions instead.
+                    // No viewer available for this file type — surface it with
+                    // open/download actions instead.
                     <div className="doc-fallback">
                       📄 {p.docName}
-                      <span className="doc-muted"> — inline preview is available for PDFs; use the actions above to open or download.</span>
+                      <span className="doc-muted"> — inline preview isn’t available for this file type; use the actions above to open or download.</span>
                     </div>
                   )
                 ) : (
