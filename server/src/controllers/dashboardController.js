@@ -89,6 +89,21 @@ export const supervisorDashboard = asyncHandler(async (req, res) => {
   const totalLikes = projects.reduce((s, p) => s + p.likes.length, 0);
   const totalComments = projects.reduce((s, p) => s + p.comments.length, 0);
 
+  // Projects tagged to me specifically (not just dept-scoped) that earned a
+  // recognition tier in the last 24h — surfaced on the dashboard as a fresh
+  // achievement, then it simply drops off once that window passes.
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const recentRecognitions = projects
+    .filter((p) => String(p.supervisor) === String(me._id) && p.recognized && p.recognizedAt && p.recognizedAt >= since)
+    .map((p) => ({
+      _id: p._id,
+      title: p.title,
+      tier: p.recognitionTier,
+      gold: Math.round(p.totalGold(users) * 10) / 10,
+      recognizedAt: p.recognizedAt,
+    }))
+    .sort((a, b) => new Date(b.recognizedAt) - new Date(a.recognizedAt));
+
   res.json({
     dept: me.dept,
     totals: {
@@ -107,5 +122,6 @@ export const supervisorDashboard = asyncHandler(async (req, res) => {
     statusBreakdown,
     topProjects,
     recentEngagement,
+    recentRecognitions,
   });
 });

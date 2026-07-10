@@ -72,6 +72,21 @@ export default function SupervisorDashboard() {
         <Stat label="Engagement" value={t.likes + t.comments} sub={`${t.likes} likes · ${t.comments} comments`} />
       </div>
 
+      {/* Recognition achievements on projects I supervise, from the last 24h */}
+      {d.recentRecognitions.length > 0 && (
+        <div className="section-card" style={{ borderLeft: '3px solid var(--gold, #d4af37)' }}>
+          <div className="section-title">🏅 Recent Recognitions ({d.recentRecognitions.length})</div>
+          {d.recentRecognitions.map((p) => (
+            <div className="list-row" key={p._id}>
+              <div className="meta" style={{ cursor: 'pointer' }} onClick={() => openProject(p._id)}>
+                <div className="title">{tierEmoji({ tier: p.tier, recognized: true })} {p.title}</div>
+                <div className="sub">{p.tier[0].toUpperCase() + p.tier.slice(1)} recognition · {p.gold}★ · {timeAgo(p.recognizedAt)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Pending approvals — actionable, only shown when there is work */}
       {d.pendingProjects.length > 0 && (
         <div className="section-card" style={{ borderLeft: '3px solid var(--amber)' }}>

@@ -111,21 +111,23 @@ export const getAnalytics = asyncHandler(async (req, res) => {
   const collaborationsByDept = toRows(collabByDept, collabList);
 
   // --- Engagement trend (monthly, one line per academic level) ---------------
-  // Total engagement (likes + comments + bookmarks + ratings + recommendations)
-  // per project, summed by month and by the project's level. Bucketed by project
-  // creation date — the one timestamp shared by every engagement type.
+  // "Distinguished" engagement per project — the signals that actually mark a
+  // project out: likes, saves (bookmarks), comments, star ratings, and whether
+  // it has earned a recognition tier — summed by month and by the project's
+  // level. Bucketed by project creation date — the one timestamp shared by
+  // every engagement type.
   const start = new Date();
   start.setMonth(start.getMonth() - 5);
   start.setDate(1);
   start.setHours(0, 0, 0, 0);
   const trendDocs = await Project.find(
     { createdAt: { $gte: start } },
-    'title createdAt likes comments bookmarks ratings spotlight authors'
+    'title createdAt likes comments bookmarks ratings recognized authors'
   )
     .populate('authors', 'level')
     .lean();
   const trendMap = {}; // "y-m" -> { level -> totalEngagement }
-  const trendBreakdown = {}; // "y-m" -> { level -> { likes, comments, bookmarks, ratings, recommended } }
+  const trendBreakdown = {}; // "y-m" -> { level -> { likes, comments, bookmarks, ratings, recognitions } }
   const trendProjects = {}; // "y-m" -> { level -> [{_id,title,sub}] } — click-through
   for (const d of trendDocs) {
     const level = levelOf(d.authors);
@@ -135,15 +137,15 @@ export const getAnalytics = asyncHandler(async (req, res) => {
     const comments = (d.comments || []).length;
     const bookmarks = (d.bookmarks || []).length;
     const ratings = (d.ratings || []).length;
-    const recommended = d.spotlight && d.spotlight.recommended ? 1 : 0;
-    const eng = likes + comments + bookmarks + ratings + recommended;
+    const recognitions = d.recognized ? 1 : 0;
+    const eng = likes + comments + bookmarks + ratings + recognitions;
     ((trendMap[key] ||= {})[level] = (trendMap[key][level] || 0) + eng);
-    const b = ((trendBreakdown[key] ||= {})[level] ||= { likes: 0, comments: 0, bookmarks: 0, ratings: 0, recommended: 0 });
+    const b = ((trendBreakdown[key] ||= {})[level] ||= { likes: 0, comments: 0, bookmarks: 0, ratings: 0, recognitions: 0 });
     b.likes += likes;
     b.comments += comments;
     b.bookmarks += bookmarks;
     b.ratings += ratings;
-    b.recommended += recommended;
+    b.recognitions += recognitions;
     const list = ((trendProjects[key] ||= {})[level] ||= []);
     if (list.length < 20) list.push({ _id: d._id, title: d.title, sub: `${eng} engagement` });
   }
@@ -156,7 +158,7 @@ export const getAnalytics = asyncHandler(async (req, res) => {
     for (const l of levelKeys) {
       row[l] = (trendMap[key] && trendMap[key][l]) || 0;
       row.projects[l] = (trendProjects[key] && trendProjects[key][l]) || [];
-      row.breakdown[l] = (trendBreakdown[key] && trendBreakdown[key][l]) || { likes: 0, comments: 0, bookmarks: 0, ratings: 0, recommended: 0 };
+      row.breakdown[l] = (trendBreakdown[key] && trendBreakdown[key][l]) || { likes: 0, comments: 0, bookmarks: 0, ratings: 0, recognitions: 0 };
     }
     engagementTrend.push(row);
     cursor.setMonth(cursor.getMonth() + 1);

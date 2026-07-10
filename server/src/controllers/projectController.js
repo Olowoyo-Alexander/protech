@@ -739,7 +739,8 @@ export const rateProject = asyncHandler(async (req, res) => {
       project: p._id,
     });
   }
-  // Announce the recognition tier to the authors.
+  // Announce the recognition tier to the authors and, separately, to the
+  // supervisor tagged on the project — they earn this too.
   if (earnedBadge) {
     const label = newTier[0].toUpperCase() + newTier.slice(1);
     const emoji = { silver: '🥈', gold: '🥇', diamond: '💎' }[newTier];
@@ -748,6 +749,15 @@ export const rateProject = asyncHandler(async (req, res) => {
         user: a,
         actor: req.user._id,
         text: `${emoji} Your project "${p.title}" reached ${label} recognition — ${p.gold()}★ from supervisors!`,
+        type: 'badge',
+        project: p._id,
+      });
+    }
+    if (p.supervisor) {
+      await notify({
+        user: p.supervisor,
+        actor: req.user._id,
+        text: `${emoji} "${p.title}", which you supervise, reached ${label} recognition!`,
         type: 'badge',
         project: p._id,
       });

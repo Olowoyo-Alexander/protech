@@ -43,7 +43,7 @@ function EngagementTooltip({ active, payload, label }) {
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><CommentIcon size={11} /> {b.comments || 0}</span>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><BookmarkIcon size={11} /> {b.bookmarks || 0}</span>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><StarIcon size={11} filled /> {b.ratings || 0}</span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>🌟 {b.recommended || 0}</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>🏅 {b.recognitions || 0}</span>
             </div>
           </div>
         );
