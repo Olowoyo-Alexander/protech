@@ -240,10 +240,16 @@ export const getProject = asyncHandler(async (req, res) => {
   // Draft group projects: tell the viewer whether they can add a contribution
   // (any group member) and whether they can submit it (an author or group admin).
   if (p.status === 'draft' && p.group) {
-    const grp = await Group.findById(p.group._id || p.group);
+    const grp = await Group.findById(p.group._id || p.group).populate({
+      path: 'members',
+      select: 'name role avatarColor deleted',
+    });
     const isAuthor = p.authors.some((a) => String(a._id || a) === String(req.user?._id));
     data.canContribute = grp ? isGroupMember(grp, req.user) : false;
     data.canSubmitDraft = grp ? isAuthor || isGroupAdmin(grp, req.user) : isAuthor;
+    // The full roster, so the draft panel can list every member with their
+    // contribution (or lack of one) right under their name.
+    data.groupMembers = grp ? grp.members : [];
   }
 
   res.json(data);

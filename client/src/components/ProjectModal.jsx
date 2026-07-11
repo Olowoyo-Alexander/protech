@@ -38,6 +38,10 @@ export default function ProjectModal({ id }) {
   // Documentation preview starts open; collapsible since PDFs take up a lot
   // of vertical space in the modal.
   const [docOpen, setDocOpen] = useState(true);
+  // Member lists (with each member's contribution under their name) start
+  // collapsed — click the header to reveal/hide.
+  const [membersOpen, setMembersOpen] = useState(false);
+  const [draftMembersOpen, setDraftMembersOpen] = useState(false);
 
   const load = () => api.get(`/projects/${id}`).then((r) => setP(r.data)).catch((e) => setError(e.message));
   useEffect(() => {
@@ -180,6 +184,23 @@ export default function ProjectModal({ id }) {
     p.status === 'approved' &&
     (user.role === 'admin' || (user.role === 'supervisor' && responsibleId === user._id));
 
+  // Members + contributions are one merged list: each member's part/role sits
+  // right under their name. On a submitted project the members are the authors
+  // (contributors are folded in on submit); leftover contributions from users
+  // no longer in that list are appended so nothing is dropped.
+  const chainShown = p.chainTotal > 1;
+  const mergedContribs = isDraft ? [] : p.contributions || [];
+  const contribFor = (uid) => mergedContribs.find((c) => c.user?._id === uid);
+  const extraContribs = mergedContribs.filter((c) => !p.authors?.some((a) => a._id === c.user?._id));
+  const membersShown = (!chainShown && p.authors?.length > 1) || mergedContribs.length > 0;
+  // Draft: list the whole group roster (contribution or not); fall back to the
+  // contributors themselves if the roster isn't in the payload.
+  const draftContribs = isDraft ? p.contributions || [] : [];
+  const draftMembers = p.groupMembers?.length
+    ? p.groupMembers
+    : draftContribs.map((c) => c.user).filter(Boolean).filter((u, i, arr) => arr.findIndex((x) => x._id === u._id) === i);
+  const extraDraftContribs = draftContribs.filter((c) => !draftMembers.some((m) => m._id === c.user?._id));
+
   return (
     <div className="overlay" onClick={closeProject}>
       <div
@@ -227,7 +248,7 @@ export default function ProjectModal({ id }) {
             </div>
           )}
 
-          {p.chainTotal > 1 ? (
+          {chainShown && (
             // This project is part of a collaboration chain — show the lineage
             // (original → … → latest) so it's clear who came first and where
             // this project sits. Click any earlier/later step to open it.
@@ -263,36 +284,64 @@ export default function ProjectModal({ id }) {
                 ))}
               </ol>
             </div>
-          ) : p.authors?.length > 1 ? (
-            // Multiple people worked on this single project — list the
-            // contributors in the order they joined, so #1 is the original
-            // author and the rest are collaborators in sequence.
-            <div className="collab-chain" style={{ margin: '.75rem 0' }}>
-              <div className="chain-head">
-                👥 Collaboration · <b>{p.authors.length} contributors</b>
-              </div>
-              <ol className="chain-list">
-                {p.authors.map((a, i) => (
-                  <li key={a._id} className={`chain-step${a._id === user._id ? ' current' : ''}`}>
-                    <span className="chain-num">{i + 1}</span>
-                    <div className="chain-body">
-                      <div className="chain-authors">
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                          <Avatar user={a} size={20} /> {a.name}
-                        </span>
+          )}
+
+          {membersShown ? (
+            // The members list and their contributions, merged: one collapsed
+            // container (click the header to reveal/hide) listing each member
+            // in joining order with their part/role right under their name.
+            <div className={`collab-chain${membersOpen ? '' : ' collapsed'}`} style={{ margin: '.75rem 0' }}>
+              <button
+                type="button"
+                className="chain-head chain-toggle"
+                onClick={() => setMembersOpen((o) => !o)}
+                aria-expanded={membersOpen}
+              >
+                <i className={`bi ${membersOpen ? 'bi-chevron-down' : 'bi-chevron-right'}`} aria-hidden="true" />
+                👥 {p.group ? 'Group members' : 'Collaboration'} ·{' '}
+                <b>{p.authors.length} contributor{p.authors.length === 1 ? '' : 's'}</b>
+              </button>
+              {membersOpen && (
+                <ol className="chain-list">
+                  {p.authors.map((a, i) => {
+                    const c = contribFor(a._id);
+                    return (
+                      <li key={a._id} className={`chain-step${a._id === user._id ? ' current' : ''}`}>
+                        <span className="chain-num">{i + 1}</span>
+                        <div className="chain-body">
+                          <div className="chain-authors">
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              <Avatar user={a} size={20} /> {a.name}
+                            </span>
+                          </div>
+                          {c && <div className="chain-contrib">{c.text}</div>}
+                          <div className="chain-meta">
+                            <span className="chain-title">{ROLE_LABELS[a.role]}</span>
+                            {i === 0 && <span className="chain-tag">group leader</span>}
+                            {i > 0 && <span className="chain-tag">collaborator</span>}
+                            {i > 0 && a._id === user._id && <span className="chain-tag here">you</span>}
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
+                  {extraContribs.map((c, j) => (
+                    <li key={c._id} className="chain-step">
+                      <span className="chain-num">{p.authors.length + j + 1}</span>
+                      <div className="chain-body">
+                        <div className="chain-authors">
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <Avatar user={c.user} size={20} /> {displayName(c.user)}
+                          </span>
+                        </div>
+                        <div className="chain-contrib">{c.text}</div>
                       </div>
-                      <div className="chain-meta">
-                        <span className="chain-title">{ROLE_LABELS[a.role]}</span>
-                        {i === 0 && <span className="chain-tag">group leader</span>}
-                        {i > 0 && <span className="chain-tag">collaborator</span>}
-                        {i > 0 && a._id === user._id && <span className="chain-tag here">you</span>}
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ol>
+                    </li>
+                  ))}
+                </ol>
+              )}
             </div>
-          ) : (
+          ) : !chainShown && (
             <div className="author-line" style={{ margin: '.75rem 0' }}>
               {p.authors?.map((a) => (
                 <span key={a._id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
@@ -377,75 +426,85 @@ export default function ProjectModal({ id }) {
             </>
           )}
 
-          {/* Who did what — each group member's part/role, kept on the project
-              after it's submitted (the editable version lives in the draft panel). */}
-          {!isDraft && p.contributions?.length > 0 && (
-            <>
-              <div className="sec-h">Contributions</div>
-              <div className="comment-list">
-                {p.contributions.map((c) => (
-                  <div className="comment" key={c._id}>
-                    <Avatar user={c.user} size={28} />
-                    <div style={{ flex: 1 }}>
-                      <div className="comment-meta">
-                        <span className="comment-author">{displayName(c.user)}</span>
-                        <span className="comment-time">{timeAgo(c.createdAt)}</span>
-                      </div>
-                      <div className="comment-text">{c.text}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
           {isDraft && (
             <div className="draft-panel">
               <div className="draft-panel-hd">
                 <span className="draft-badge">✎ Draft</span>
               </div>
 
-              <div className="sec-h">Contributions ({p.contributionCount || 0})</div>
-              <div className="comment-list">
-                {p.contributions?.length ? (
-                  p.contributions.map((c) => {
-                    const mine = c.user?._id === user._id;
-                    const editing = editContribId === c._id;
-                    return (
-                      <div className="comment" key={c._id}>
-                        <Avatar user={c.user} size={28} />
-                        <div style={{ flex: 1 }}>
-                          <div className="comment-meta">
-                            <span className="comment-author">{displayName(c.user)}</span>
-                            <span className="comment-time">{timeAgo(c.createdAt)}</span>
-                            {mine && !editing && (
-                              <span className="contrib-actions">
-                                <button className="contrib-link" onClick={() => startEditContrib(c)}>Edit</button>
-                                <button className="contrib-link danger" onClick={() => removeContrib(c)}>Remove</button>
+              {/* The group roster and the contributions, merged: every member
+                  listed with their part/role right under their name. Collapsed
+                  by default — click the header to reveal/hide. */}
+              <div className={`collab-chain${draftMembersOpen ? '' : ' collapsed'}`}>
+                <button
+                  type="button"
+                  className="chain-head chain-toggle"
+                  onClick={() => setDraftMembersOpen((o) => !o)}
+                  aria-expanded={draftMembersOpen}
+                >
+                  <i className={`bi ${draftMembersOpen ? 'bi-chevron-down' : 'bi-chevron-right'}`} aria-hidden="true" />
+                  👥 Group members · <b>{draftMembers.length}</b> ·{' '}
+                  {p.contributionCount || 0} contribution{(p.contributionCount || 0) === 1 ? '' : 's'}
+                </button>
+                {draftMembersOpen && (
+                  <ol className="chain-list">
+                    {draftMembers.map((m, i) => {
+                      const c = draftContribs.find((x) => x.user?._id === m._id);
+                      const mine = m._id === user._id;
+                      const editing = c && editContribId === c._id;
+                      return (
+                        <li key={m._id} className={`chain-step${mine ? ' current' : ''}`}>
+                          <span className="chain-num">{i + 1}</span>
+                          <div className="chain-body" style={{ flex: 1 }}>
+                            <div className="chain-authors">
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                <Avatar user={m} size={20} /> {displayName(m)}
                               </span>
-                            )}
-                          </div>
-                          {editing ? (
-                            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                              <input
-                                className="contrib-edit-input"
-                                value={editContribText}
-                                onChange={(e) => setEditContribText(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && saveEditContrib(c)}
-                                autoFocus
-                              />
-                              <button className="btn btn-primary btn-sm" disabled={busy || !editContribText.trim()} onClick={() => saveEditContrib(c)}>Save</button>
-                              <button className="btn btn-ghost btn-sm" onClick={cancelEditContrib}>Cancel</button>
+                              {mine && <span className="chain-tag here">you</span>}
+                              {c && mine && !editing && (
+                                <span className="contrib-actions">
+                                  <button className="contrib-link" onClick={() => startEditContrib(c)}>Edit</button>
+                                  <button className="contrib-link danger" onClick={() => removeContrib(c)}>Remove</button>
+                                </span>
+                              )}
                             </div>
-                          ) : (
-                            <div className="comment-text">{c.text}</div>
-                          )}
+                            {editing ? (
+                              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                                <input
+                                  className="contrib-edit-input"
+                                  value={editContribText}
+                                  onChange={(e) => setEditContribText(e.target.value)}
+                                  onKeyDown={(e) => e.key === 'Enter' && saveEditContrib(c)}
+                                  autoFocus
+                                />
+                                <button className="btn btn-primary btn-sm" disabled={busy || !editContribText.trim()} onClick={() => saveEditContrib(c)}>Save</button>
+                                <button className="btn btn-ghost btn-sm" onClick={cancelEditContrib}>Cancel</button>
+                              </div>
+                            ) : c ? (
+                              <div className="chain-contrib">{c.text}</div>
+                            ) : (
+                              <div className="chain-contrib empty">No contribution yet</div>
+                            )}
+                            {c && <div className="chain-meta"><span className="chain-title">{timeAgo(c.createdAt)}</span></div>}
+                          </div>
+                        </li>
+                      );
+                    })}
+                    {extraDraftContribs.map((c, j) => (
+                      <li key={c._id} className="chain-step">
+                        <span className="chain-num">{draftMembers.length + j + 1}</span>
+                        <div className="chain-body">
+                          <div className="chain-authors">
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              <Avatar user={c.user} size={20} /> {displayName(c.user)}
+                            </span>
+                          </div>
+                          <div className="chain-contrib">{c.text}</div>
+                          <div className="chain-meta"><span className="chain-title">{timeAgo(c.createdAt)}</span></div>
                         </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div style={{ fontSize: 12, color: 'var(--textmuted)' }}>No contributions yet.</div>
+                      </li>
+                    ))}
+                  </ol>
                 )}
               </div>
 

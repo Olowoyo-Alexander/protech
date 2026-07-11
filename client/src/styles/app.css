@@ -321,6 +321,13 @@ body.no-scroll{overflow:hidden}
 .collab-chain .chain-title.link{color:var(--blue);cursor:pointer;text-decoration:underline}
 .collab-chain .chain-tag{font-size:9px;text-transform:uppercase;letter-spacing:.4px;padding:1px 6px;border-radius:4px;background:var(--border);color:var(--textmuted);font-weight:600}
 .collab-chain .chain-tag.here{background:#ede9fe;color:#5b21b6}
+/* Members + contributions merged: clickable header (collapsed by default) and
+   each member's contribution shown right under their name. */
+.collab-chain .chain-toggle{display:flex;align-items:center;gap:6px;width:100%;background:none;border:none;padding:0;cursor:pointer;text-align:left}
+.collab-chain .chain-toggle .bi{font-size:11px;color:var(--textmuted)}
+.collab-chain.collapsed .chain-head{margin-bottom:0}
+.collab-chain .chain-contrib{font-size:12px;color:var(--text);white-space:pre-wrap;overflow-wrap:anywhere}
+.collab-chain .chain-contrib.empty{color:var(--textmuted);font-style:italic}
 
 /* TABS */
 .tabs{display:flex;border-bottom:2px solid var(--border);margin-bottom:.875rem;flex-wrap:wrap}
