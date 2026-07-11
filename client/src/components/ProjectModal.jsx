@@ -35,9 +35,9 @@ export default function ProjectModal({ id }) {
   // Supervisor rating draft (a rating must be accompanied by a comment).
   const [rateVal, setRateVal] = useState(0);
   const [rateComment, setRateComment] = useState('');
-  // Documentation preview starts open; collapsible since PDFs take up a lot
-  // of vertical space in the modal.
-  const [docOpen, setDocOpen] = useState(true);
+  // Documentation preview starts collapsed — PDFs take up a lot of vertical
+  // space in the modal; click the header to reveal/hide.
+  const [docOpen, setDocOpen] = useState(false);
   // Member lists (with each member's contribution under their name) start
   // collapsed — click the header to reveal/hide.
   const [membersOpen, setMembersOpen] = useState(false);
@@ -390,7 +390,7 @@ export default function ProjectModal({ id }) {
                   onClick={() => setDocOpen((o) => !o)}
                   aria-expanded={docOpen}
                 >
-                  <span className="doc-toggle-caret" aria-hidden="true">{docOpen ? '▾' : '▸'}</span>
+                  <i className={`bi ${docOpen ? 'bi-chevron-down' : 'bi-chevron-right'} doc-toggle-caret`} aria-hidden="true" />
                   Documentation
                 </button>
                 {p.docUrl && (
