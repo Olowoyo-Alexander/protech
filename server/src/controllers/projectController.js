@@ -282,8 +282,12 @@ export const createProject = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error('Please fill in all required fields');
   }
-  // Documentation is mandatory for every submission — projects and collaborations.
-  if (!req.file) {
+  // Documentation is mandatory for every real submission — projects and
+  // collaborations — but NOT for a group draft: a draft is built up from
+  // members' text contributions first, and a document is attached later,
+  // by the author or a group admin, before it's actually submitted.
+  const wantsDraft = (saveAsDraft === 'true' || saveAsDraft === true) && !!groupId;
+  if (!req.file && !wantsDraft) {
     res.status(400);
     throw new Error('Please attach a documentation file before submitting');
   }
@@ -444,7 +448,10 @@ export const updateProject = asyncHandler(async (req, res) => {
     if (uploaded) p.docUrl = uploaded.url;
   }
   const wasApproved = p.status === 'approved';
-  if (isAuthor) p.status = 'pending'; // re-review after author edit
+  // A draft stays a draft through ordinary edits (attaching the document,
+  // tweaking a field) — it only leaves draft via the explicit /submit action,
+  // which is also what folds contributors into the author list.
+  if (isAuthor && p.status !== 'draft') p.status = 'pending'; // re-review after author edit
   await p.save();
   // An approved extension pulled back to pending no longer counts on its parent.
   if (p.extends && wasApproved && p.status !== 'approved') await decParentExtensions(p.extends);

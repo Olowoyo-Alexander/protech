@@ -90,11 +90,13 @@ export default function NewProjectModal() {
       setError("Please enter your supervisor's valid tag to tag them.");
       return;
     }
-    if (!file) {
+    const asDraft = !!groupId && saveAsDraft;
+    // A draft is built up from members' text contributions first; the
+    // document is attached later, before it's actually submitted for review.
+    if (!file && !asDraft) {
       setError('Please attach a documentation file — it is required to submit.');
       return;
     }
-    const asDraft = !!groupId && saveAsDraft;
     const ok = await confirm({
       title: asDraft ? 'Save group draft?' : isCollab ? 'Submit collaboration?' : 'Submit project?',
       message: asDraft
@@ -219,9 +221,13 @@ export default function NewProjectModal() {
             </label>
           )}
           <div className="fg">
-            <label>Documentation *</label>
+            <label>Documentation {groupId && saveAsDraft ? '(optional for a draft)' : '*'}</label>
             <label className={`file-lbl ${file ? 'has-file' : ''}`}>
-              📄 {file ? file.name : 'Click to attach a document (PDF, DOCX, etc.) — required'}
+              📄 {file
+                ? file.name
+                : groupId && saveAsDraft
+                ? 'Click to attach a document (PDF, DOCX, etc.) — or add it before submitting'
+                : 'Click to attach a document (PDF, DOCX, etc.) — required'}
               <input type="file" style={{ display: 'none' }} onChange={(e) => setFile(e.target.files[0] || null)} />
             </label>
           </div>
