@@ -93,13 +93,10 @@ export default function Analytics() {
     levelKeys = [],
     projectsByDept = [],
     collaborationsByDept = [],
-    groupPerformance = [],
     engagementTrend = [],
   } = data;
 
   const levelSeries = levelKeys.map((l) => ({ key: l, label: l }));
-  // Group names can be long — keep the x-axis ticks compact.
-  const groupAbbr = (n) => (String(n).length > 12 ? `${String(n).slice(0, 11)}…` : n);
 
   return (
     <>
@@ -147,26 +144,6 @@ export default function Analytics() {
             onOpenProject={openProject}
           />
         </div>
-
-        {/* Group performance — stars and engagement side by side per group.
-            Only shown once at least one group has approved work, so the page
-            isn't padded with an empty card before then. */}
-        {groupPerformance.length > 0 && (
-          <div className="chart-card">
-            <div className="chart-title">Group Performance</div>
-            <BarGraph
-              data={groupPerformance}
-              xKey="name"
-              series={[
-                { key: 'stars', label: '⭐ Stars' },
-                { key: 'engagement', label: 'Engagement' },
-              ]}
-              grouped
-              labelFormatter={groupAbbr}
-              onOpenProject={openProject}
-            />
-          </div>
-        )}
 
         <div className="chart-card">
           <div className="chart-title">Top Performance</div>

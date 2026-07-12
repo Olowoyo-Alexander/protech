@@ -76,14 +76,11 @@ function TopValue({ x, y, width, value }) {
  *  onBarSelect(row)     → alternative to onOpenProject for bars whose "result" isn't
  *                         a list of projects (e.g. a role or status breakdown) — the
  *                         full data row is handed to the caller directly, no popover
- *  grouped              → render multiple series side-by-side instead of stacked
- *                         (for series in different units, e.g. stars vs engagement,
- *                         where stacking them into one bar would be meaningless)
  */
 export default function BarGraph({
-  data = [], xKey, series, height = 240, badgeKey, labelFormatter, onOpenProject, onBarSelect, grouped = false,
+  data = [], xKey, series, height = 240, badgeKey, labelFormatter, onOpenProject, onBarSelect,
 }) {
-  const stacked = series.length > 1 && !grouped;
+  const stacked = series.length > 1;
   const wrapRef = useRef(null);
   const [active, setActive] = useState(null); // { left, name, projects }
 
@@ -158,7 +155,7 @@ export default function BarGraph({
                 name={s.label || s.key}
                 stackId={stacked ? 'a' : undefined}
                 fill={`url(#bgp-${xKey}-${i % TEMPLATE_PALETTE.length})`}
-                radius={last || grouped ? [6, 6, 0, 0] : 0}
+                radius={last ? [6, 6, 0, 0] : 0}
                 maxBarSize={56}
                 cursor={clickable ? 'pointer' : 'default'}
                 onClick={clickable ? onBarClick : undefined}
@@ -167,14 +164,12 @@ export default function BarGraph({
                 animationDuration={800}
                 animationEasing="ease-out"
               >
-                {/* Simple (single-series) bars cycle the palette per bar, like the
-                    template; stacked and grouped series keep one colour each. */}
-                {series.length === 1 && data.map((_, idx) => (
+                {/* Simple (non-stacked) bars cycle the palette per bar, like the
+                    template; stacked series keep one colour each. */}
+                {!stacked && data.map((_, idx) => (
                   <Cell key={idx} fill={`url(#bgp-${xKey}-${idx % TEMPLATE_PALETTE.length})`} />
                 ))}
-                {/* Grouped bars each label their own value (there's no shared
-                    total to badge); stacks badge once on the top segment. */}
-                {(grouped || last) && <LabelList dataKey={grouped ? s.key : topKey} content={TopValue} />}
+                {last && <LabelList dataKey={topKey} content={TopValue} />}
               </Bar>
             );
           })}
