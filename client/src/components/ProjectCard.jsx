@@ -43,7 +43,9 @@ export default function ProjectCard({ project, onChange }) {
             👥 Group · {p.group.name}
           </span>
         )}
-        {p.authors?.length > 1 && <span className="collab-badge">👥 Collaboration</span>}
+        {/* Multiple authors on a group project just means group members — not a
+            collaboration, so no badge there. */}
+        {!p.group && p.authors?.length > 1 && <span className="collab-badge">👥 Collaboration</span>}
         {reco && <span className={`reco-badge tier-${reco.key}`}>{reco.emoji} {reco.label}</span>}
         {p.hidden && <span className="state-badge">🙈 Hidden</span>}
       </div>

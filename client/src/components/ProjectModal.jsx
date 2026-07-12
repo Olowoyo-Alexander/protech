@@ -226,7 +226,7 @@ export default function ProjectModal({ id }) {
                 👥 Group · {p.group.name}
               </span>
             )}
-            {p.authors?.length > 1 && <span className="collab-badge">👥 Collaboration</span>}
+            {!p.group && p.authors?.length > 1 && <span className="collab-badge">👥 Collaboration</span>}
             {recoMeta(p) && (
               <span className={`reco-badge tier-${recoMeta(p).key}`}>
                 {recoMeta(p).emoji} {recoMeta(p).label}
