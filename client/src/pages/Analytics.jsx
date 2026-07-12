@@ -93,10 +93,14 @@ export default function Analytics() {
     levelKeys = [],
     projectsByDept = [],
     collaborationsByDept = [],
+    groupStarsByLevel = [],
+    groupEngagementByLevel = [],
     engagementTrend = [],
   } = data;
 
   const levelSeries = levelKeys.map((l) => ({ key: l, label: l }));
+  // Group names can be long — keep the x-axis ticks compact.
+  const groupAbbr = (n) => (String(n).length > 12 ? `${String(n).slice(0, 11)}…` : n);
 
   return (
     <>
@@ -144,6 +148,35 @@ export default function Analytics() {
             onOpenProject={openProject}
           />
         </div>
+
+        {/* Group performance — only shown once at least one group has approved
+            work, so the page isn't padded with empty cards before then. */}
+        {groupStarsByLevel.length > 0 && (
+          <div className="chart-card">
+            <div className="chart-title">Group Performance · ⭐ Stars</div>
+            <BarGraph
+              data={groupStarsByLevel}
+              xKey="name"
+              series={levelSeries}
+              badgeKey="total"
+              labelFormatter={groupAbbr}
+              onOpenProject={openProject}
+            />
+          </div>
+        )}
+        {groupEngagementByLevel.length > 0 && (
+          <div className="chart-card">
+            <div className="chart-title">Group Performance · Engagement</div>
+            <BarGraph
+              data={groupEngagementByLevel}
+              xKey="name"
+              series={levelSeries}
+              badgeKey="total"
+              labelFormatter={groupAbbr}
+              onOpenProject={openProject}
+            />
+          </div>
+        )}
 
         <div className="chart-card">
           <div className="chart-title">Top Performance</div>
