@@ -68,6 +68,16 @@ export const DEPTS = [
 
 export const SETS = ['2020/2021', '2021/2022', '2022/2023', '2023/2024', '2024/2025'];
 
+// Academic sets always display in chronological order (2018/2019 before
+// 2024/2025) no matter when each was added. Sorted by the first year in the
+// label; entries without a year sort last, alphabetically.
+const setYear = (s) => {
+  const m = String(s).match(/\d{4}/);
+  return m ? Number(m[0]) : Infinity;
+};
+export const sortSets = (sets) =>
+  [...sets].sort((a, b) => setYear(a) - setYear(b) || String(a).localeCompare(String(b)));
+
 // Academic levels (students).
 export const LEVELS = ['100 Level', '200 Level', '300 Level', '400 Level', '500 Level'];
 

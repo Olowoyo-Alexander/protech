@@ -7,10 +7,20 @@ import Group from '../models/Group.js';
 // A department short form is at least three uppercase letters (e.g. CSC, ENGR).
 const SHORT_RE = /^[A-Z]{3,}$/;
 
+// Academic sets are kept in chronological order (e.g. 2018/2019 before
+// 2024/2025) regardless of when each was added. Sorted by the first year in
+// the label; entries without a year sort last, alphabetically.
+const setYear = (s) => {
+  const m = String(s).match(/\d{4}/);
+  return m ? Number(m[0]) : Infinity;
+};
+export const sortSets = (sets) =>
+  [...sets].sort((a, b) => setYear(a) - setYear(b) || String(a).localeCompare(String(b)));
+
 // Serialize the settings doc for the client (Map → plain object).
 const shape = (s) => ({
   departments: s.departments,
-  sets: s.sets,
+  sets: sortSets(s.sets),
   deptShorts: s.deptShorts ? Object.fromEntries(s.deptShorts) : {},
 });
 
@@ -45,7 +55,7 @@ export const updateSettings = asyncHandler(async (req, res) => {
   }
 
   if (departments) s.departments = departments;
-  if (sets) s.sets = sets;
+  if (sets) s.sets = sortSets(sets);
 
   // Short forms: keep only valid ones (≥3 uppercase letters) that belong to a
   // current department. Rebuilt from scratch each save so renamed/removed

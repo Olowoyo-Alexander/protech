@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import api from '../api/client.js';
 import { useSettings } from '../context/SettingsContext.jsx';
+import { sortSets } from '../utils.js';
 
 const SHORT_RE = /^[A-Z]{3,}$/;
 
@@ -78,7 +79,7 @@ export default function AdminSettings() {
   // `orig` remembers each row's name as loaded, so a rename can be detected and
   // cascaded to every project/user/group that references the old name.
   const [deptRows, setDeptRows] = useState(() => departments.map((name) => ({ name, short: deptShorts[name] || '', orig: name })));
-  const [yrs, setYrs] = useState(sets);
+  const [yrs, setYrs] = useState(() => sortSets(sets));
   const [msg, setMsg] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -136,7 +137,7 @@ export default function AdminSettings() {
         <TagEditor
           title="Academic Sets"
           items={yrs}
-          onAdd={(v) => setYrs([...yrs, v])}
+          onAdd={(v) => setYrs(sortSets([...yrs, v]))}
           onRemove={(v) => setYrs(yrs.filter((x) => x !== v))}
         />
       </div>
