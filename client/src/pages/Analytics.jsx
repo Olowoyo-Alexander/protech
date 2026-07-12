@@ -93,8 +93,7 @@ export default function Analytics() {
     levelKeys = [],
     projectsByDept = [],
     collaborationsByDept = [],
-    groupStarsByLevel = [],
-    groupEngagementByLevel = [],
+    groupPerformance = [],
     engagementTrend = [],
   } = data;
 
@@ -149,29 +148,20 @@ export default function Analytics() {
           />
         </div>
 
-        {/* Group performance — only shown once at least one group has approved
-            work, so the page isn't padded with empty cards before then. */}
-        {groupStarsByLevel.length > 0 && (
+        {/* Group performance — stars and engagement side by side per group.
+            Only shown once at least one group has approved work, so the page
+            isn't padded with an empty card before then. */}
+        {groupPerformance.length > 0 && (
           <div className="chart-card">
-            <div className="chart-title">Group Performance · ⭐ Stars</div>
+            <div className="chart-title">Group Performance</div>
             <BarGraph
-              data={groupStarsByLevel}
+              data={groupPerformance}
               xKey="name"
-              series={levelSeries}
-              badgeKey="total"
-              labelFormatter={groupAbbr}
-              onOpenProject={openProject}
-            />
-          </div>
-        )}
-        {groupEngagementByLevel.length > 0 && (
-          <div className="chart-card">
-            <div className="chart-title">Group Performance · Engagement</div>
-            <BarGraph
-              data={groupEngagementByLevel}
-              xKey="name"
-              series={levelSeries}
-              badgeKey="total"
+              series={[
+                { key: 'stars', label: '⭐ Stars' },
+                { key: 'engagement', label: 'Engagement' },
+              ]}
+              grouped
               labelFormatter={groupAbbr}
               onOpenProject={openProject}
             />

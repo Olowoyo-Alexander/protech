@@ -114,15 +114,14 @@ export const getAnalytics = asyncHandler(async (req, res) => {
   const projectsByDept = toRows(projByDept, projList);
   const collaborationsByDept = toRows(collabByDept, collabList);
 
-  // --- Group performance (group × academic level) ----------------------------
-  // Two matrices in the same shape as the dept charts, but with a bar per group:
-  // stars earned and engagement received by each group's approved projects,
-  // stacked by the academic level involved. Only approved work counts (a group
-  // draft/pending project can't earn stars or engagement anyway). Top 8 groups
-  // per metric so the chart stays readable as groups multiply.
+  // --- Group performance ------------------------------------------------------
+  // One row per group with both performance signals side by side: stars earned
+  // and engagement received by the group's approved projects. Only approved work
+  // counts (a group draft/pending project can't earn stars or engagement anyway).
+  // The level/set of each project is carried in the click-through list. Top 8
+  // groups (by combined score) so the chart stays readable as groups multiply.
   const round1 = (n) => Math.round(n * 10) / 10;
-  const groupStars = {}; // group name -> { level -> stars }
-  const groupEng = {}; // group name -> { level -> engagement }
+  const groupPerf = {}; // group name -> { stars, engagement }
   const groupProjList = {}; // group name -> [{ _id, title, sub }] for the popover
   for (const p of all) {
     if (!p.group) continue;
@@ -131,31 +130,25 @@ export const getAnalytics = asyncHandler(async (req, res) => {
     const stars = p.totalGold(users);
     const eng =
       p.likes.length + p.comments.length + p.bookmarks.length + p.ratings.length + (p.recognized ? 1 : 0);
-    ((groupStars[gname] ||= {})[level] = (groupStars[gname][level] || 0) + stars);
-    ((groupEng[gname] ||= {})[level] = (groupEng[gname][level] || 0) + eng);
+    const g = (groupPerf[gname] ||= { stars: 0, engagement: 0 });
+    g.stars += stars;
+    g.engagement += eng;
     (groupProjList[gname] ||= []).push({
       _id: p._id,
       title: p.title,
       sub: `${p.set} · ${level} · ${round1(stars)}★ · ${eng} engagement`,
     });
   }
-  // Same flattening as toRows, plus rounding (stars are fractional) and the
-  // top-8 cut. Group rows use `name` as the category key.
-  const toGroupRows = (map) =>
-    Object.entries(map)
-      .map(([name, levels]) => {
-        const row = { name, total: 0, projects: (groupProjList[name] || []).slice(0, 40) };
-        for (const l of levelKeys) {
-          row[l] = round1(levels[l] || 0);
-          row.total = round1(row.total + row[l]);
-        }
-        return row;
-      })
-      .filter((r) => r.total > 0)
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 8);
-  const groupStarsByLevel = toGroupRows(groupStars);
-  const groupEngagementByLevel = toGroupRows(groupEng);
+  const groupPerformance = Object.entries(groupPerf)
+    .map(([name, g]) => ({
+      name,
+      stars: round1(g.stars),
+      engagement: g.engagement,
+      projects: (groupProjList[name] || []).slice(0, 40),
+    }))
+    .filter((r) => r.stars > 0 || r.engagement > 0)
+    .sort((a, b) => b.stars + b.engagement - (a.stars + a.engagement))
+    .slice(0, 8);
 
   // --- Engagement trend (monthly, one line per academic level) ---------------
   // "Distinguished" engagement per project — the signals that actually mark a
@@ -216,8 +209,7 @@ export const getAnalytics = asyncHandler(async (req, res) => {
     levelKeys,
     projectsByDept,
     collaborationsByDept,
-    groupStarsByLevel,
-    groupEngagementByLevel,
+    groupPerformance,
     engagementTrend,
     topProjects: top,
   });
