@@ -65,7 +65,7 @@ export function SocketProvider({ children }) {
     fetchNotifications();
     refreshMessageUnread();
 
-    const token = localStorage.getItem('prostech_token');
+    const token = sessionStorage.getItem('prostech_token');
     const socket = io(import.meta.env.VITE_API_URL || '/', {
       auth: { token },
       transports: ['websocket', 'polling'],

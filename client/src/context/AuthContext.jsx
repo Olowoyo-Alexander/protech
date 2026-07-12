@@ -18,9 +18,11 @@ export function AuthProvider({ children }) {
   // (Not set when restoring an existing session on page reload.)
   const [justLoggedIn, setJustLoggedIn] = useState(false);
 
-  // Restore session on load
+  // Restore session on load. The token lives in sessionStorage (not localStorage)
+  // so it survives refreshes but is cleared when the tab is closed — closing the
+  // tab logs the user out.
   useEffect(() => {
-    const token = localStorage.getItem('prostech_token');
+    const token = sessionStorage.getItem('prostech_token');
     if (!token) {
       setLoading(false);
       return;
@@ -28,12 +30,12 @@ export function AuthProvider({ children }) {
     api
       .get('/auth/me')
       .then((res) => setUser(res.data.user))
-      .catch(() => localStorage.removeItem('prostech_token'))
+      .catch(() => sessionStorage.removeItem('prostech_token'))
       .finally(() => setLoading(false));
   }, []);
 
   const finishAuth = ({ token, user }) => {
-    localStorage.setItem('prostech_token', token);
+    sessionStorage.setItem('prostech_token', token);
     setUser(user);
     setJustLoggedIn(true); // trigger the welcome splash
   };
@@ -71,7 +73,7 @@ export function AuthProvider({ children }) {
       if (slug) localStorage.setItem('prostech_last_gateway', slug);
       return null;
     });
-    localStorage.removeItem('prostech_token');
+    sessionStorage.removeItem('prostech_token');
   }, []);
 
   // Auto sign-out after 15 minutes with no mouse/keyboard/touch/scroll activity,

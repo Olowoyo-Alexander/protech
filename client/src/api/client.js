@@ -4,9 +4,10 @@ const api = axios.create({
   baseURL: (import.meta.env.VITE_API_URL || '') + '/api',
 });
 
-// Attach JWT from localStorage to every request
+// Attach JWT from sessionStorage to every request. sessionStorage (rather than
+// localStorage) so closing the tab ends the session and the user must sign in again.
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('prostech_token');
+  const token = sessionStorage.getItem('prostech_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
